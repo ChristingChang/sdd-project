@@ -32,3 +32,17 @@
 ## 工具鏈
 
 `.claude/skills/` 是這個專案的技能，Codex 透過 `.agents/skills` symlink 讀同一份。改技能前讀 `.claude/skills/README.md`，改完跑 `bash scripts/check.sh`。
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues（`gh` CLI）。見 `docs/agents/issue-tracker.md`。
+
+### Domain docs
+
+single-context，shared。見 `docs/agents/domain.md`。
+
+### Comment language
+
+程式註解一律使用繁體中文。
