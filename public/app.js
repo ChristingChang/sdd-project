@@ -383,6 +383,17 @@ function driverPanel(trip) {
 
 function applyForm(trip) {
   const message = h('div');
+  const allowed = config.boardAllowed[trip.boardRule];
+  const boardNote =
+    trip.boardRule === 'any'
+      ? null
+      : h(
+          'span',
+          { class: 'field-note' },
+          trip.boardRule === 'none'
+            ? '這位司機不載板，只能選「不帶板」。想帶板請找其他行程。'
+            : '這位司機僅載短板，不能帶長板。想帶長板請找其他行程。',
+        );
   const form = h(
     'form',
     {
@@ -422,8 +433,9 @@ function applyForm(trip) {
         'select',
         { name: 'boardType' },
         h('option', { value: '' }, '請選擇'),
-        Object.entries(config.boardTypes).map(([value, label]) => h('option', { value }, label)),
+        allowed.map((value) => h('option', { value }, config.boardTypes[value])),
       ),
+      boardNote,
     ),
     h('button', { class: 'block' }, '申請共乘'),
   );

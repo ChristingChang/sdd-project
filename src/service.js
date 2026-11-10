@@ -4,6 +4,12 @@
 export const SPOTS = ['北堤', '雙獅', '頭城', '烏石港', '外澳', '宜蘭其他'];
 export const BOARD_RULES = { none: '不載板', short: '僅短板', any: '長短板皆可' };
 export const BOARD_TYPES = { none: '不帶板', short: '短板', long: '長板' };
+// 每種載板條件允許乘客帶的浪板類型（PR-REQ-07）
+export const BOARD_ALLOWED = {
+  none: ['none'],
+  short: ['none', 'short'],
+  any: ['none', 'short', 'long'],
+};
 
 export class DomainError extends Error {
   constructor(status, code, message, fields) {
@@ -231,6 +237,14 @@ export function createService(db, { now = () => Date.now() } = {}) {
       if (!JSON.parse(trip.pickups).includes(input.pickup)) missing.push('pickup');
       if (!Object.hasOwn(BOARD_TYPES, input.boardType ?? '')) missing.push('boardType');
       if (missing.length) throw new DomainError(400, 'invalid', '請檢查必填欄位', missing);
+      if (!BOARD_ALLOWED[trip.board_rule].includes(input.boardType)) {
+        throw new DomainError(
+          400,
+          'board_not_allowed',
+          `這趟行程${BOARD_RULES[trip.board_rule]}，不能帶${BOARD_TYPES[input.boardType]}`,
+          ['boardType'],
+        );
+      }
       const exists = db
         .prepare(
           `SELECT 1 FROM requests WHERE trip_id = ? AND passenger_id = ? AND status != 'withdrawn'`,
