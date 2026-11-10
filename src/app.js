@@ -1,6 +1,13 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { createService, BOARD_RULES, BOARD_TYPES, DomainError, SPOTS } from './service.js';
+import {
+  createService,
+  BOARD_ALLOWED,
+  BOARD_RULES,
+  BOARD_TYPES,
+  DomainError,
+  SPOTS,
+} from './service.js';
 
 const SESSION_DAYS = 30;
 const MAX_BODY = 16 * 1024;
@@ -133,7 +140,12 @@ export function createApp({ db, line, baseUrl, devLogin = false, now = () => Dat
     let match;
 
     if (method === 'GET' && path === '/api/config') {
-      return send(res, 200, { spots: SPOTS, boardRules: BOARD_RULES, boardTypes: BOARD_TYPES });
+      return send(res, 200, {
+        spots: SPOTS,
+        boardRules: BOARD_RULES,
+        boardTypes: BOARD_TYPES,
+        boardAllowed: BOARD_ALLOWED,
+      });
     }
     if (method === 'GET' && path === '/api/me') {
       return send(res, 200, { user: publicUser(user), devLogin });

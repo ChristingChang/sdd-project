@@ -243,3 +243,44 @@ test('PR-CANCEL-02 別人不能替乘客退出，已拒絕的申請也不能退�
   await driver.post(`/api/requests/${requestId}/reject`);
   assert.equal((await a.post(`/api/requests/${requestId}/withdraw`)).status, 409);
 });
+
+test('PR-REQ-07 浪板類型必須符合司機的載板條件，不符時無法申請', async (t) => {
+  const cases = [
+    { boardRule: 'none', allowed: ['none'], denied: ['short', 'long'] },
+    { boardRule: 'short', allowed: ['none', 'short'], denied: ['long'] },
+    { boardRule: 'any', allowed: ['none', 'short', 'long'], denied: [] },
+  ];
+  const { user } = await startApp(t);
+  const driver = await user('司機');
+  for (const { boardRule, allowed, denied } of cases) {
+    const { body } = await driver.post('/api/trips', validTrip({ boardRule, seats: 3 }));
+    for (const boardType of denied) {
+      const passenger = await user(`被擋-${boardRule}-${boardType}`);
+      const res = await passenger.post(`/api/trips/${body.trip.id}/requests`, {
+        pickup: '板橋新埔站',
+        boardType,
+      });
+      assert.equal(res.status, 400, `${boardRule} 不該接受 ${boardType}`);
+      assert.equal(res.body.error, 'board_not_allowed');
+      assert.deepEqual(res.body.fields, ['boardType']);
+    }
+    for (const boardType of allowed) {
+      const passenger = await user(`可以-${boardRule}-${boardType}`);
+      const res = await passenger.post(`/api/trips/${body.trip.id}/requests`, {
+        pickup: '板橋新埔站',
+        boardType,
+      });
+      assert.equal(res.status, 201, `${boardRule} 應該接受 ${boardType}`);
+    }
+  }
+});
+
+test('PR-REQ-07 前端設定提供每種載板條件可選的浪板類型', async (t) => {
+  const { client } = await startApp(t);
+  const { body } = await client().get('/api/config');
+  assert.deepEqual(body.boardAllowed, {
+    none: ['none'],
+    short: ['none', 'short'],
+    any: ['none', 'short', 'long'],
+  });
+});
