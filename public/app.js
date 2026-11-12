@@ -41,18 +41,45 @@ function h(tag, attrs = {}, ...children) {
 }
 
 async function api(path, { method = 'GET', body } = {}) {
-  const res = await fetch(path, {
-    method,
-    headers: method === 'GET' ? {} : { 'content-type': 'application/json' },
-    body: method === 'GET' ? undefined : JSON.stringify(body ?? {}),
-  });
+  let res;
+  try {
+    res = await fetch(path, {
+      method,
+      headers: method === 'GET' ? {} : { 'content-type': 'application/json' },
+      body: method === 'GET' ? undefined : JSON.stringify(body ?? {}),
+    });
+  } catch {
+    // fetch 只有在連不到伺服器時才會丟錯，瀏覽器給的是英文 "Failed to fetch"，換成使用者看得懂的話
+    const error = new Error('網路連線失敗，請確認網路後再試一次');
+    Object.assign(error, { code: 'network', fields: [] });
+    throw error;
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
+    // 登入過期：清掉前端的登入狀態，導覽列才不會繼續顯示「我的」
+    if (data.error === 'login_required' && me) {
+      me = null;
+      renderNav();
+    }
     const error = new Error(data.message ?? '系統錯誤，請稍後再試');
     Object.assign(error, { code: data.error, fields: data.fields ?? [] });
     throw error;
   }
   return data;
+}
+
+// 按鈕動作共用：執行期間停用按鈕防止連點；失敗時把錯誤顯示在 slot，不再靜默失敗
+async function runAction(button, slot, fn) {
+  if (button.disabled) return;
+  button.disabled = true;
+  slot.replaceChildren();
+  try {
+    await fn();
+  } catch (error) {
+    slot.replaceChildren(notice(errorText(error), 'error'));
+  } finally {
+    button.disabled = false;
+  }
 }
 
 function go(path) {
@@ -83,10 +110,15 @@ function errorText(error) {
   return names.length ? `${error.message}：${[...new Set(names)].join('、')}` : error.message;
 }
 
+// 紅框之外也標 aria-invalid，螢幕閱讀器才會念出「無效」，不只靠顏色
 function markFields(form, fields = []) {
   form.querySelectorAll('.field-error').forEach((node) => node.classList.remove('field-error'));
+  form.querySelectorAll('[aria-invalid]').forEach((node) => node.removeAttribute('aria-invalid'));
   for (const field of fields) {
-    form.querySelector(`[data-field="${field}"]`)?.classList.add('field-error');
+    const wrapper = form.querySelector(`[data-field="${field}"]`);
+    if (!wrapper) continue;
+    wrapper.classList.add('field-error');
+    wrapper.querySelectorAll('input, select, textarea').forEach((node) => node.setAttribute('aria-invalid', 'true'));
   }
 }
 
@@ -144,8 +176,11 @@ async function homePage() {
     config.spots.map((name) => h('option', { value: name, selected: name === params.get('spot') }, name)),
   );
   const list = h('div', { 'aria-live': 'polite' });
+  // 快速切換篩選時，較慢回來的舊結果不能蓋掉新結果：只採用最後一次請求
+  let latest = 0;
 
   async function load() {
+    const requestId = ++latest;
     const query = new URLSearchParams();
     if (date.value) query.set('date', date.value);
     if (spot.value) query.set('spot', spot.value);
@@ -159,7 +194,25 @@ async function homePage() {
     dateToggle.textContent = date.value ? '全部日期' : '只看明天';
     dateToggle.onclick = () => setDate(date.value ? '' : tomorrow);
 
-    const { trips } = await api(`/api/trips${apiSuffix}`);
+    list.setAttribute('aria-busy', 'true');
+    let trips;
+    try {
+      ({ trips } = await api(`/api/trips${apiSuffix}`));
+    } catch (error) {
+      if (requestId !== latest) return;
+      list.removeAttribute('aria-busy');
+      list.replaceChildren(
+        h(
+          'div',
+          { class: 'empty' },
+          notice(errorText(error), 'error'),
+          h('button', { type: 'button', class: 'secondary', onclick: load }, '重新載入'),
+        ),
+      );
+      return;
+    }
+    if (requestId !== latest) return;
+    list.removeAttribute('aria-busy');
     let empty;
     if (isTomorrow) {
       empty = h(
@@ -200,6 +253,7 @@ function loginPrompt(message) {
   ];
   if (devLogin) {
     const name = h('input', { value: '測試司機', 'aria-label': '測試用名稱' });
+    const slot = h('div');
     children.push(
       h('h2', {}, '開發用假登入'),
       name,
@@ -207,14 +261,16 @@ function loginPrompt(message) {
         'button',
         {
           class: 'secondary block spaced',
-          onclick: async () => {
-            await api('/auth/dev', { method: 'POST', body: { name: name.value } });
-            await refreshMe();
-            render();
-          },
+          onclick: (event) =>
+            runAction(event.currentTarget, slot, async () => {
+              await api('/auth/dev', { method: 'POST', body: { name: name.value } });
+              await refreshMe();
+              render();
+            }),
         },
         '假登入',
       ),
+      slot,
     );
   }
   mount(...children);
@@ -234,6 +290,9 @@ function contactForm(onDone) {
     {
       onsubmit: async (event) => {
         event.preventDefault();
+        const button = event.currentTarget.querySelector('button');
+        if (button.disabled) return;
+        button.disabled = true;
         try {
           const { user } = await api('/api/me', { method: 'PUT', body: { contact: input.value } });
           me = user;
@@ -241,6 +300,8 @@ function contactForm(onDone) {
           else message.replaceChildren(notice('已儲存聯絡方式'));
         } catch (error) {
           message.replaceChildren(notice(errorText(error), 'error'));
+        } finally {
+          button.disabled = false;
         }
       },
     },
@@ -355,15 +416,13 @@ function detailRow(label, value) {
 }
 
 function requestCard(request) {
-  const act = (action) => async () => {
-    try {
+  const slot = h('div');
+  // 錯誤留在卡片裡（原本用 alert 跳窗）。重新整理頁面就能看到最新狀態，例如行程已滿
+  const act = (action) => (event) =>
+    runAction(event.currentTarget, slot, async () => {
       await api(`/api/requests/${request.id}/${action}`, { method: 'POST' });
       render();
-    } catch (error) {
-      alert(error.message);
-      render();
-    }
-  };
+    });
   return h(
     'div',
     { class: 'card' },
@@ -375,6 +434,7 @@ function requestCard(request) {
     ),
     h('p', { class: 'meta' }, `上車：${request.pickup}｜${config.boardTypes[request.boardType]}`),
     request.contact ? h('div', { class: 'contact' }, `聯絡方式：${request.contact}`) : null,
+    slot,
     request.status === 'pending'
       ? h(
           'div',
@@ -388,20 +448,24 @@ function requestCard(request) {
 
 function driverPanel(trip) {
   const active = trip.status === 'open' && !trip.departed;
+  const slot = h('div');
   return [
     h('h2', {}, `申請（${trip.requests.length}）`),
     trip.requests.length
       ? trip.requests.map(requestCard)
       : h('p', { class: 'empty' }, '還沒有人申請，把連結分享到 FB 社團或 LINE 群吧'),
+    slot,
     active
       ? h(
           'button',
           {
             class: 'danger block',
-            onclick: async () => {
+            onclick: (event) => {
               if (!confirm('確定要取消這個行程嗎？已申請的乘客會收到通知。')) return;
-              await api(`/api/trips/${trip.id}/cancel`, { method: 'POST' });
-              render();
+              return runAction(event.currentTarget, slot, async () => {
+                await api(`/api/trips/${trip.id}/cancel`, { method: 'POST' });
+                render();
+              });
             },
           },
           '取消行程',
@@ -430,6 +494,9 @@ function applyForm(trip) {
       onsubmit: async (event) => {
         event.preventDefault();
         const data = new FormData(form);
+        const button = form.querySelector('button');
+        if (button.disabled) return;
+        button.disabled = true;
         try {
           await api(`/api/trips/${trip.id}/requests`, {
             method: 'POST',
@@ -437,6 +504,7 @@ function applyForm(trip) {
           });
           render();
         } catch (error) {
+          button.disabled = false;
           markFields(form, error.fields);
           message.replaceChildren(notice(errorText(error), 'error'));
         }
@@ -476,6 +544,7 @@ function passengerPanel(trip) {
     const { id, status, pickup, boardType } = trip.myRequest;
     const canWithdraw =
       trip.status === 'open' && !trip.departed && ['pending', 'accepted'].includes(status);
+    const slot = h('div');
     return [
       h('h2', {}, '我的申請'),
       h(
@@ -488,6 +557,7 @@ function passengerPanel(trip) {
           h('span', { class: `badge ${status}` }, STATUS_LABEL[status]),
         ),
         trip.driverContact ? h('div', { class: 'contact' }, `司機聯絡方式：${trip.driverContact}`) : null,
+        slot,
         canWithdraw
           ? h(
               'div',
@@ -496,10 +566,12 @@ function passengerPanel(trip) {
                 'button',
                 {
                   class: 'danger',
-                  onclick: async () => {
+                  onclick: (event) => {
                     if (!confirm('確定要退出這個行程嗎？')) return;
-                    await api(`/api/requests/${id}/withdraw`, { method: 'POST' });
-                    render();
+                    return runAction(event.currentTarget, slot, async () => {
+                      await api(`/api/requests/${id}/withdraw`, { method: 'POST' });
+                      render();
+                    });
                   },
                 },
                 '退出行程',
@@ -522,14 +594,22 @@ function passengerPanel(trip) {
 
 async function tripPage(id) {
   const { trip } = await api(`/api/trips/${id}`);
+  const shareSlot = h('div');
   const share = async () => {
     const url = location.href;
+    shareSlot.replaceChildren();
     if (navigator.share) {
+      // 使用者自己關掉分享面板也會丟錯，那不是失敗，所以吞掉
       await navigator.share({ title: '浪乘', url }).catch(() => {});
       return;
     }
-    await navigator.clipboard.writeText(url);
-    shareButton.textContent = '已複製連結';
+    // 非 HTTPS（例如手機連電腦的區網 IP）沒有 clipboard，寫入也可能被瀏覽器拒絕
+    try {
+      await navigator.clipboard.writeText(url);
+      shareButton.textContent = '已複製連結';
+    } catch {
+      shareSlot.replaceChildren(notice(`無法自動複製，請手動複製這個網址：${url}`, 'error'));
+    }
   };
   const shareButton = h('button', { class: 'secondary block', onclick: share }, '分享行程');
   mount(
@@ -559,6 +639,7 @@ async function tripPage(id) {
       ),
     ),
     shareButton,
+    shareSlot,
     ...(trip.isDriver ? driverPanel(trip) : passengerPanel(trip)),
   );
 }
@@ -566,6 +647,7 @@ async function tripPage(id) {
 async function mePage() {
   if (!me) return loginPrompt('登入後才能查看你的行程與申請。');
   const { trips, requests } = await api('/api/my');
+  const logoutSlot = h('div');
   mount(
     h('h1', {}, `${me.name} 的共乘`),
     h('h2', {}, '我的申請'),
@@ -590,14 +672,16 @@ async function mePage() {
       'button',
       {
         class: 'secondary block spaced',
-        onclick: async () => {
-          await api('/api/logout', { method: 'POST' });
-          me = null;
-          go('/');
-        },
+        onclick: (event) =>
+          runAction(event.currentTarget, logoutSlot, async () => {
+            await api('/api/logout', { method: 'POST' });
+            me = null;
+            go('/');
+          }),
       },
       '登出',
     ),
+    logoutSlot,
   );
 }
 
@@ -630,6 +714,19 @@ document.addEventListener('click', (event) => {
 });
 window.addEventListener('popstate', render);
 
-config = await api('/api/config');
-await refreshMe();
-await render();
+// 啟動失敗（多半是離線）時給一個重試按鈕，不要留一片空白
+async function boot() {
+  try {
+    config = await api('/api/config');
+    await refreshMe();
+  } catch (error) {
+    mount(
+      notice(errorText(error), 'error'),
+      h('button', { type: 'button', class: 'block', onclick: boot }, '重新載入'),
+    );
+    return;
+  }
+  await render();
+}
+
+await boot();
