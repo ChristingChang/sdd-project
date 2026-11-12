@@ -22,10 +22,14 @@ const FIELD_LABEL = {
 let me = null;
 let devLogin = false;
 let config = null;
+// 重新整理畫面後要顯示在頁首的一次性訊息（例如「行程已滿」），下一次 mount 時取用並清掉
+let flash = null;
 
 // replaceChildren 會把陣列和 null 印成文字，所以畫面一律經過這裡攤平
 function mount(...children) {
-  view.replaceChildren(...children.flat(Infinity).filter((child) => child !== null && child !== undefined));
+  const top = flash ? notice(flash, 'error') : null;
+  flash = null;
+  view.replaceChildren(...[top, children].flat(Infinity).filter((child) => child !== null && child !== undefined));
 }
 
 function h(tag, attrs = {}, ...children) {
@@ -56,10 +60,11 @@ async function api(path, { method = 'GET', body } = {}) {
   }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    // 登入過期：清掉前端的登入狀態，導覽列才不會繼續顯示「我的」
+    // 登入過期：清掉前端的登入狀態並重畫目前頁面，畫面會換成登入按鈕（PR-REQ-02），不是停在一則錯誤
     if (data.error === 'login_required' && me) {
       me = null;
-      renderNav();
+      flash = '登入已過期，請重新登入';
+      render();
     }
     const error = new Error(data.message ?? '系統錯誤，請稍後再試');
     Object.assign(error, { code: data.error, fields: data.fields ?? [] });
@@ -68,14 +73,23 @@ async function api(path, { method = 'GET', body } = {}) {
   return data;
 }
 
-// 按鈕動作共用：執行期間停用按鈕防止連點；失敗時把錯誤顯示在 slot，不再靜默失敗
-async function runAction(button, slot, fn) {
+// 按鈕動作共用：執行期間停用按鈕防止連點；失敗時顯示原因，不再靜默失敗。
+// fn 裡的 render() 要 await，否則按鈕會在新畫面出來前就恢復可按。
+// refreshOnReject：伺服器拒絕（例如行程已滿、已取消）代表畫面狀態過時，先重新整理再把原因放在頁首；
+// 網路錯誤不重新整理，因為重抓也會失敗，原因留在按鈕旁
+async function runAction(button, slot, fn, { refreshOnReject = false } = {}) {
   if (button.disabled) return;
   button.disabled = true;
   slot.replaceChildren();
   try {
     await fn();
   } catch (error) {
+    if (error.code === 'login_required') return; // api() 已經重畫成登入畫面
+    if (refreshOnReject && error.code !== 'network') {
+      flash = errorText(error);
+      await render();
+      return;
+    }
     slot.replaceChildren(notice(errorText(error), 'error'));
   } finally {
     button.disabled = false;
@@ -180,7 +194,7 @@ async function homePage() {
   let latest = 0;
 
   async function load() {
-    const requestId = ++latest;
+    const seq = ++latest;
     const query = new URLSearchParams();
     if (date.value) query.set('date', date.value);
     if (spot.value) query.set('spot', spot.value);
@@ -199,7 +213,7 @@ async function homePage() {
     try {
       ({ trips } = await api(`/api/trips${apiSuffix}`));
     } catch (error) {
-      if (requestId !== latest) return;
+      if (seq !== latest) return;
       list.removeAttribute('aria-busy');
       list.replaceChildren(
         h(
@@ -211,7 +225,7 @@ async function homePage() {
       );
       return;
     }
-    if (requestId !== latest) return;
+    if (seq !== latest) return;
     list.removeAttribute('aria-busy');
     let empty;
     if (isTomorrow) {
@@ -265,7 +279,7 @@ function loginPrompt(message) {
             runAction(event.currentTarget, slot, async () => {
               await api('/auth/dev', { method: 'POST', body: { name: name.value } });
               await refreshMe();
-              render();
+              await render();
             }),
         },
         '假登入',
@@ -417,12 +431,12 @@ function detailRow(label, value) {
 
 function requestCard(request) {
   const slot = h('div');
-  // 錯誤留在卡片裡（原本用 alert 跳窗）。重新整理頁面就能看到最新狀態，例如行程已滿
+  // 原本用 alert 跳窗。網路錯誤留在卡片裡；伺服器拒絕（例如行程已滿）則重新整理並在頁首說明原因
   const act = (action) => (event) =>
     runAction(event.currentTarget, slot, async () => {
       await api(`/api/requests/${request.id}/${action}`, { method: 'POST' });
-      render();
-    });
+      await render();
+    }, { refreshOnReject: true });
   return h(
     'div',
     { class: 'card' },
@@ -464,8 +478,8 @@ function driverPanel(trip) {
               if (!confirm('確定要取消這個行程嗎？已申請的乘客會收到通知。')) return;
               return runAction(event.currentTarget, slot, async () => {
                 await api(`/api/trips/${trip.id}/cancel`, { method: 'POST' });
-                render();
-              });
+                await render();
+              }, { refreshOnReject: true });
             },
           },
           '取消行程',
@@ -570,8 +584,8 @@ function passengerPanel(trip) {
                     if (!confirm('確定要退出這個行程嗎？')) return;
                     return runAction(event.currentTarget, slot, async () => {
                       await api(`/api/requests/${id}/withdraw`, { method: 'POST' });
-                      render();
-                    });
+                      await render();
+                    }, { refreshOnReject: true });
                   },
                 },
                 '退出行程',
@@ -599,16 +613,21 @@ async function tripPage(id) {
     const url = location.href;
     shareSlot.replaceChildren();
     if (navigator.share) {
-      // 使用者自己關掉分享面板也會丟錯，那不是失敗，所以吞掉
-      await navigator.share({ title: '浪乘', url }).catch(() => {});
-      return;
+      try {
+        await navigator.share({ title: '浪乘', url });
+        return;
+      } catch (error) {
+        // 使用者自己關掉分享面板（AbortError）不是失敗；其他錯誤改走下面的複製連結
+        if (error.name === 'AbortError') return;
+      }
     }
     // 非 HTTPS（例如手機連電腦的區網 IP）沒有 clipboard，寫入也可能被瀏覽器拒絕
     try {
       await navigator.clipboard.writeText(url);
       shareButton.textContent = '已複製連結';
     } catch {
-      shareSlot.replaceChildren(notice(`無法自動複製，請手動複製這個網址：${url}`, 'error'));
+      // 這是操作說明不是錯誤，用一般提示樣式
+      shareSlot.replaceChildren(notice(`無法自動複製，請手動複製這個網址：${url}`));
     }
   };
   const shareButton = h('button', { class: 'secondary block', onclick: share }, '分享行程');
@@ -701,7 +720,10 @@ async function render() {
     else if (path === '/me') await mePage();
     else await homePage();
   } catch (error) {
-    mount(notice(error.message, 'error'), link('/', {}, '回到首頁'));
+    // 登入過期時 api() 已經重畫成登入畫面，這裡不能再蓋掉它
+    if (error.code === 'login_required') return;
+    // 沒有 code 的是程式本身的例外（英文訊息），不直接顯示給使用者
+    mount(notice(error.code ? errorText(error) : '系統錯誤，請重新整理頁面', 'error'), link('/', {}, '回到首頁'));
   }
 }
 
@@ -722,7 +744,18 @@ async function boot() {
   } catch (error) {
     mount(
       notice(errorText(error), 'error'),
-      h('button', { type: 'button', class: 'block', onclick: boot }, '重新載入'),
+      h(
+        'button',
+        {
+          type: 'button',
+          class: 'block',
+          onclick: (event) => {
+            event.currentTarget.disabled = true;
+            boot();
+          },
+        },
+        '重新載入',
+      ),
     );
     return;
   }
