@@ -131,7 +131,8 @@ h2 {
 
 .filters {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* minmax(0, 1fr)：欄位可以比內容窄，iOS 日期框的內建最小寬度才不會撐開欄位 */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 10px;
   margin-bottom: 14px;
 }
@@ -144,6 +145,7 @@ label {
 }
 
 .filters label {
+  min-width: 0;
   margin-bottom: 0;
 }
 
@@ -184,6 +186,8 @@ select,
 textarea {
   display: block;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   min-height: 44px;
   margin-top: 4px;
   padding: 9px 10px;
@@ -199,6 +203,38 @@ textarea {
 .field-error textarea,
 fieldset.field-error .checks label {
   border-color: var(--danger);
+}
+
+/* iOS Safari 的日期與時間框有自己的外觀：置中、較高、有最小寬度。統一成和選單一樣 */
+input[type='date'],
+input[type='time'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 44px;
+  text-align: left;
+}
+
+input[type='date']::-webkit-date-and-time-value,
+input[type='time']::-webkit-date-and-time-value {
+  text-align: left;
+}
+
+select {
+  height: 44px;
+}
+
+.filter-actions {
+  margin: -6px 0 12px;
+}
+
+.link-button {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ocean-dark);
+  font-size: 15px;
+  text-decoration: underline;
 }
 
 .field-note {

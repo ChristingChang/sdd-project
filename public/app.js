@@ -121,9 +121,22 @@ function tripCard(trip, extra) {
   );
 }
 
+// 台灣時間的明天。行程多在出發前一天發、清晨出發，所以首頁預設看明天（PR-FIND-05）
+function tomorrowInTaiwan() {
+  return new Date(Date.now() + 8 * 3600000 + 86400000).toISOString().slice(0, 10);
+}
+
 async function homePage() {
   const params = new URLSearchParams(location.search);
-  const date = h('input', { type: 'date', value: params.get('date') ?? '', 'aria-label': '日期' });
+  const tomorrow = tomorrowInTaiwan();
+  // 網址沒有 date 時預設明天；date=all 代表全部日期
+  const initialDate = params.get('date') === 'all' ? '' : params.get('date') || tomorrow;
+  const date = h('input', { type: 'date', value: initialDate, 'aria-label': '日期' });
+  const dateToggle = h('button', { type: 'button', class: 'link-button' });
+  const setDate = (value) => {
+    date.value = value;
+    load();
+  };
   const spot = h(
     'select',
     { 'aria-label': '浪點' },
@@ -136,14 +149,29 @@ async function homePage() {
     const query = new URLSearchParams();
     if (date.value) query.set('date', date.value);
     if (spot.value) query.set('spot', spot.value);
-    const suffix = query.size ? `?${query}` : '';
-    history.replaceState(null, '', `/${suffix}`);
-    const { trips } = await api(`/api/trips${suffix}`);
-    list.replaceChildren(
-      ...(trips.length
-        ? trips.map((trip) => tripCard(trip))
-        : [h('p', { class: 'empty' }, '目前沒有符合的行程，換個日期或浪點看看')]),
-    );
+    const apiSuffix = query.size ? `?${query}` : '';
+    // 網址要記住「全部日期」，重新整理才不會跳回明天
+    const pageQuery = new URLSearchParams(query);
+    if (!date.value) pageQuery.set('date', 'all');
+    history.replaceState(null, '', `/?${pageQuery}`);
+
+    const isTomorrow = date.value === tomorrow;
+    dateToggle.textContent = date.value ? '全部日期' : '只看明天';
+    dateToggle.onclick = () => setDate(date.value ? '' : tomorrow);
+
+    const { trips } = await api(`/api/trips${apiSuffix}`);
+    let empty;
+    if (isTomorrow) {
+      empty = h(
+        'div',
+        { class: 'empty' },
+        h('p', {}, '明天目前沒有行程'),
+        h('button', { type: 'button', class: 'secondary', onclick: () => setDate('') }, '看全部日期'),
+      );
+    } else {
+      empty = h('p', { class: 'empty' }, '目前沒有符合的行程，換個日期或浪點看看');
+    }
+    list.replaceChildren(...(trips.length ? trips.map((trip) => tripCard(trip)) : [empty]));
   }
 
   date.addEventListener('change', load);
@@ -158,6 +186,7 @@ async function homePage() {
       h('label', {}, '日期', date),
       h('label', {}, '浪點', spot),
     ),
+    h('div', { class: 'filter-actions' }, dateToggle),
     list,
   );
   await load();
