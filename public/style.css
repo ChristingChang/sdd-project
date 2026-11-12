@@ -223,6 +223,20 @@ select {
   height: 44px;
 }
 
+.filter-actions {
+  margin: -6px 0 12px;
+}
+
+.link-button {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ocean-dark);
+  font-size: 15px;
+  text-decoration: underline;
+}
+
 .field-note {
   display: block;
   margin-top: 3px;
