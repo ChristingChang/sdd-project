@@ -91,6 +91,17 @@ h2 {
   gap: 8px;
 }
 
+/* 長名稱、長上車點不能把卡片撐破：允許在任意處換行 */
+.card-head > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+h1,
+.meta {
+  overflow-wrap: anywhere;
+}
+
 .when {
   font-size: 17px;
   font-weight: 700;
@@ -110,6 +121,7 @@ h2 {
   color: var(--ocean-dark);
   font-size: 13px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .badge.full,
