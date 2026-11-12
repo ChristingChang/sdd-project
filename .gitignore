@@ -45,3 +45,9 @@ tmp/
 
 # 本機資料庫
 data/
+
+# Impeccable：引擎執行檔與執行期快取不進版控
+**/skills/impeccable/scripts/bin/
+.impeccable/config.local.json
+.impeccable/hook.cache.json
+.impeccable/hook.pending.json
