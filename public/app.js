@@ -137,10 +137,12 @@ function markFields(form, fields = []) {
 }
 
 function renderNav() {
+  // 標出目前所在頁，畫面有底線、螢幕閱讀器念「目前頁面」；行程詳細頁不屬於任何一項
+  const current = (path) => (location.pathname === path ? 'page' : null);
   nav.replaceChildren(
-    link('/', {}, '找車'),
-    link('/new', {}, '發車'),
-    me ? link('/me', {}, '我的') : h('a', { href: loginHref() }, '登入'),
+    link('/', { 'aria-current': current('/') }, '找車'),
+    link('/new', { 'aria-current': current('/new') }, '發車'),
+    me ? link('/me', { 'aria-current': current('/me') }, '我的') : h('a', { href: loginHref() }, '登入'),
   );
 }
 
@@ -663,28 +665,89 @@ async function tripPage(id) {
   );
 }
 
+// 「過去的行程」展開後一次多顯示幾筆
+const HISTORY_PAGE = 10;
+
+// 把「我發的」與「我申請的」合成一份清單，依時間分成三組：
+// - 接下來：還沒出發、還會成行的（有待確認申請的司機行程排最前面，其餘依出發時間由近到遠）
+// - 配對失敗：還沒出發，但我的申請被拒絕、或行程被司機取消；出發時間過了就移到「過去」
+// - 過去：已出發的全部，加上司機自己取消的行程（那是自己的決定，不算配對失敗），由近到遠
+function groupActivity(trips, requests) {
+  const items = [
+    ...trips.map((trip) => ({ trip, role: 'driver', pending: trip.pending })),
+    ...requests.map((request) => ({ trip: request.trip, role: 'passenger', status: request.status })),
+  ];
+  const when = (item) => `${item.trip.date} ${item.trip.time}`;
+  const upcoming = [];
+  const failed = [];
+  const past = [];
+  for (const item of items) {
+    const cancelled = item.trip.status === 'cancelled';
+    if (item.trip.departed) past.push(item);
+    else if (item.role === 'driver') (cancelled ? past : upcoming).push(item);
+    else if (cancelled || item.status === 'rejected') failed.push(item);
+    else upcoming.push(item);
+  }
+  upcoming.sort((a, b) => (b.pending > 0) - (a.pending > 0) || when(a).localeCompare(when(b)));
+  failed.sort((a, b) => when(a).localeCompare(when(b)));
+  past.sort((a, b) => when(b).localeCompare(when(a)));
+  return { upcoming, failed, past };
+}
+
+// 卡片底下一行：先標身分，再放申請狀態或待確認數。
+// 行程取消後申請在後端仍是「待確認」，和右上角的「已取消」互相矛盾，所以不顯示；
+// 待確認數只在還能處理時（未出發、未取消）顯示
+function activityCard(item) {
+  const { trip } = item;
+  const live = trip.status !== 'cancelled' && !trip.departed;
+  const extra =
+    item.role === 'driver'
+      ? h(
+          'p',
+          { class: 'meta' },
+          '我發的',
+          live && item.pending ? ['｜', h('span', { class: 'badge pending' }, `${item.pending} 筆申請待確認`)] : null,
+        )
+      : h(
+          'p',
+          { class: 'meta' },
+          '我申請的',
+          trip.status === 'cancelled'
+            ? null
+            : ['｜', h('span', { class: `badge ${item.status}` }, STATUS_LABEL[item.status])],
+        );
+  return tripCard(trip, extra);
+}
+
+// 過去的行程預設收合（原生 details，鍵盤與螢幕閱讀器都支援），展開後分批顯示
+function historySection(past) {
+  const list = h('div');
+  const more = h('button', { type: 'button', class: 'secondary block' }, '顯示更多');
+  let shown = 0;
+  const showMore = () => {
+    list.append(...past.slice(shown, shown + HISTORY_PAGE).map(activityCard));
+    shown += HISTORY_PAGE;
+    more.hidden = shown >= past.length;
+  };
+  more.addEventListener('click', showMore);
+  showMore();
+  return h('details', { class: 'history' }, h('summary', {}, `過去的行程（${past.length}）`), list, more);
+}
+
 async function mePage() {
   if (!me) return loginPrompt('登入後才能查看你的行程與申請。');
   const { trips, requests } = await api('/api/my');
+  const { upcoming, failed, past } = groupActivity(trips, requests);
   const logoutSlot = h('div');
   mount(
     h('h1', {}, `${me.name} 的共乘`),
-    h('h2', {}, '我的申請'),
-    requests.length
-      ? requests.map((request) =>
-          tripCard(
-            request.trip,
-            h('p', { class: 'meta' }, `申請狀態：${STATUS_LABEL[request.status]}`),
-          ),
-        )
-      : h('p', { class: 'empty' }, '還沒有申請過行程'),
-    h('h2', {}, '我發的行程'),
-    trips.length
-      ? trips.map((trip) =>
-          tripCard(trip, trip.pending ? h('p', { class: 'meta' }, `${trip.pending} 筆申請待確認`) : null),
-        )
-      : h('p', { class: 'empty' }, '還沒有發過行程'),
+    h('h2', {}, '接下來'),
+    upcoming.length
+      ? upcoming.map(activityCard)
+      : h('p', { class: 'empty' }, '接下來沒有行程，去找車或發一趟吧'),
     link('/new', { class: 'button block' }, '＋ 發一趟新行程'),
+    failed.length ? [h('h2', {}, `配對失敗（${failed.length}）`), failed.map(activityCard)] : null,
+    past.length ? historySection(past) : null,
     h('h2', {}, '聯絡方式'),
     contactForm(),
     h(
