@@ -8,6 +8,14 @@
   --danger: #b3261e;
   --ok: #1b7a43;
   --warn: #8a5a00;
+  --tint: #e3f1f4;
+  --field-line: #b9c4c7;
+  accent-color: var(--ocean);
+}
+
+::selection {
+  background: #cfe6ec;
+  color: var(--ink);
 }
 
 * {
@@ -25,6 +33,7 @@ body {
 
 a {
   color: var(--ocean-dark);
+  text-underline-offset: 3px;
 }
 
 .topbar {
@@ -35,7 +44,8 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 16px;
+  /* 左右內距跟著內容欄（max-width 560px）走，寬螢幕上品牌字和導覽才會對齊下方內容 */
+  padding: 0 max(16px, calc((100% - 560px) / 2 + 16px));
   background: var(--ocean);
   color: #fff;
 }
@@ -52,8 +62,26 @@ a {
 
 #nav {
   display: flex;
-  gap: 14px;
+  gap: 4px;
   font-size: 15px;
+}
+
+/* 導覽連結撐到 44px 高，手指好點；目前所在頁加底線 */
+.topbar a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+#nav a {
+  padding: 0 8px;
+}
+
+#nav a[aria-current='page'] {
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 6px;
 }
 
 main {
@@ -84,6 +112,19 @@ h2 {
   text-decoration: none;
 }
 
+/* 可以點進去的卡片要有回饋，不能點的（申請卡）維持不動 */
+a.card {
+  transition: border-color 150ms ease-out, background-color 150ms ease-out;
+}
+
+a.card:hover {
+  border-color: var(--field-line);
+}
+
+a.card:active {
+  background: #fbfdfd;
+}
+
 .card-head {
   display: flex;
   align-items: baseline;
@@ -105,6 +146,7 @@ h1,
 .when {
   font-size: 17px;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .meta {
@@ -117,7 +159,7 @@ h1,
   flex: none;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #e3f1f4;
+  background: var(--tint);
   color: var(--ocean-dark);
   font-size: 13px;
   font-weight: 600;
@@ -191,6 +233,15 @@ legend {
   border-radius: 10px;
   background: #fff;
   font-weight: 400;
+  cursor: pointer;
+}
+
+/* 已勾選的浪點整顆變色，不只靠小小的勾勾 */
+.checks label:has(:checked) {
+  border-color: var(--ocean);
+  background: var(--tint);
+  color: var(--ocean-dark);
+  font-weight: 600;
 }
 
 input:not([type='checkbox']),
@@ -203,11 +254,16 @@ textarea {
   min-height: 44px;
   margin-top: 4px;
   padding: 9px 10px;
-  border: 1px solid #b9c4c7;
+  border: 1px solid var(--field-line);
   border-radius: 10px;
   background: #fff;
   color: inherit;
   font: inherit;
+}
+
+::placeholder {
+  color: var(--muted);
+  opacity: 1;
 }
 
 .field-error input,
@@ -271,6 +327,12 @@ button,
   text-align: center;
   text-decoration: none;
   cursor: pointer;
+  transition: background-color 150ms ease-out;
+}
+
+button:hover:not(:disabled),
+.button:hover {
+  background: var(--ocean-dark);
 }
 
 button:disabled {
@@ -290,10 +352,23 @@ button.secondary {
   color: var(--ink);
 }
 
+button.secondary:hover:not(:disabled) {
+  background: #f1f5f5;
+}
+
 button.danger {
   border: 1px solid var(--danger);
   background: #fff;
   color: var(--danger);
+}
+
+button.danger:hover:not(:disabled) {
+  background: #fdf1f0;
+}
+
+.link-button:hover:not(:disabled) {
+  background: none;
+  color: var(--ink);
 }
 
 .spaced {
@@ -302,6 +377,10 @@ button.danger {
 
 .line-button {
   background: #06c755;
+}
+
+.line-button:hover {
+  background: #05b04b;
 }
 
 .actions {
@@ -318,7 +397,7 @@ button.danger {
   margin-bottom: 12px;
   padding: 10px 12px;
   border-radius: 10px;
-  background: #e3f1f4;
+  background: var(--tint);
   font-size: 14px;
 }
 
@@ -362,12 +441,35 @@ button.danger {
   overflow-wrap: anywhere;
 }
 
+/* .block 等樣式的 display 會蓋掉 hidden 屬性，這裡讓 hidden 一定生效 */
+[hidden] {
+  display: none !important;
+}
+
+/* 過去的行程：收合標題和 h2 同一個層級，整列都可以點 */
+.history {
+  margin-top: 20px;
+}
+
+.history summary {
+  display: list-item;
+  min-height: 44px;
+  margin-bottom: 8px;
+  padding: 10px 0;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.history summary::marker {
+  color: var(--muted);
+}
+
 .empty {
   padding: 28px 12px;
   color: var(--muted);
   text-align: center;
 }
-
 
 :focus-visible {
   outline: 3px solid #f2a900;
