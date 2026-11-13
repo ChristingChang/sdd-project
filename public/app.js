@@ -825,10 +825,12 @@ async function tripPage(id) {
   const shareSlot = h('div');
   const share = async () => {
     const url = location.href;
+    // 司機分享整篇發文文字（已含連結），選 LINE 也看得到完整資訊；其他人只分享連結
+    const payload = trip.shareText ? { text: trip.shareText } : { title: '浪乘', url };
     shareSlot.replaceChildren();
     if (navigator.share) {
       try {
-        await navigator.share({ title: '浪乘', url });
+        await navigator.share(payload);
         return;
       } catch (error) {
         // 使用者自己關掉分享面板（AbortError）不是失敗；其他錯誤改走下面的複製連結
