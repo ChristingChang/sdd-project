@@ -7,6 +7,7 @@ import {
   BOARD_TYPES,
   DomainError,
   SPOTS,
+  SPOT_LABELS,
 } from './service.js';
 import { shareText } from './share.js';
 
@@ -143,6 +144,7 @@ export function createApp({ db, line, baseUrl, devLogin = false, now = () => Dat
     if (method === 'GET' && path === '/api/config') {
       return send(res, 200, {
         spots: SPOTS,
+        spotLabels: SPOT_LABELS,
         boardRules: BOARD_RULES,
         boardTypes: BOARD_TYPES,
         boardAllowed: BOARD_ALLOWED,

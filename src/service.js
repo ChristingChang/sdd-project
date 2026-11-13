@@ -1,7 +1,12 @@
 // 領域規則。所有函式都是同步的：單一 Node 行程內不會交錯執行，
 // 所以「檢查座位 → 寫入」不會發生超賣。若改成多行程部署，這個前提要重新檢視。
 
-export const SPOTS = ['北堤', '雙獅', '頭城', '烏石港', '外澳', '宜蘭其他'];
+// 2026-11-13：移除頭城（既有行程照常顯示，只是不能再發）；烏石港併入北堤；新增蜜月灣
+export const SPOTS = ['北堤', '雙獅', '外澳', '蜜月灣', '宜蘭其他'];
+// 選項上顯示的名稱：補上別名，讓只知道另一個叫法的人也認得
+export const SPOT_LABELS = Object.fromEntries(
+  SPOTS.map((spot) => [spot, { 北堤: '北堤（烏石港）', 蜜月灣: '蜜月灣（大溪）' }[spot] ?? spot]),
+);
 export const BOARD_RULES = { none: '不載板', short: '僅短板', any: '長短板皆可' };
 export const BOARD_TYPES = { none: '不帶板', short: '短板', long: '長板' };
 // 每種載板條件允許乘客帶的浪板類型（PR-REQ-07）

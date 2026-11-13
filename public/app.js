@@ -255,7 +255,7 @@ async function homePage() {
     'select',
     { class: 'compact-select', 'aria-label': '浪點' },
     h('option', { value: '' }, '全部浪點'),
-    config.spots.map((name) => h('option', { value: name, selected: name === params.get('spot') }, name)),
+    config.spots.map((name) => h('option', { value: name, selected: name === params.get('spot') }, config.spotLabels[name])),
   );
   const strip = h('div', { class: 'dates', role: 'group', 'aria-label': '選擇日期' });
   const summary = h('p', { class: 'list-summary', 'aria-live': 'polite' });
@@ -561,7 +561,7 @@ async function newTripPage() {
           'div',
           { class: 'checks' },
           config.spots.map((name) =>
-            h('label', {}, h('input', { type: 'checkbox', name: 'spots', value: name }), name),
+            h('label', {}, h('input', { type: 'checkbox', name: 'spots', value: name }), config.spotLabels[name]),
           ),
         ),
       ),
