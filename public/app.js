@@ -495,7 +495,7 @@ function group(title, ...children) {
   return h('section', { class: 'group' }, h('h2', {}, title), h('div', { class: 'group-body' }, ...children));
 }
 
-function newTripPage() {
+async function newTripPage() {
   if (!me) return loginPrompt('登入後才能發行程。');
   if (!me.contact) {
     mount(h('h1', {}, '先填聯絡方式'), contactForm(render));
@@ -528,6 +528,7 @@ function newTripPage() {
               fareRoundTrip: number('fareRoundTrip'),
               returnTime: data.get('returnTime'),
               note: data.get('note'),
+              meetingPoint: data.get('meetingPoint'),
             },
           });
           go(`/trips/${trip.id}`);
@@ -570,6 +571,12 @@ function newTripPage() {
         h('input', { name: 'pickups', placeholder: '例如：板橋新埔站、後山埤站' }),
         '多個上車點請用頓號或逗號分開',
       ),
+      field(
+        'meetingPoint',
+        '精確集合點（選填）',
+        h('input', { name: 'meetingPoint', maxlength: 100, placeholder: '例如：3 號出口全家門口，白色 RAV4' }),
+        '只有你接受的乘客看得到，接受通知裡也會附上',
+      ),
     ),
     group(
       '座位與車資',
@@ -604,6 +611,32 @@ function newTripPage() {
     h('button', { class: 'block' }, '發布行程'),
   );
   mount(h('h1', {}, '發行程'), form);
+  await prefill(form);
+}
+
+// 帶入上一趟的資料（日期除外），司機通常每週跑同一條路線
+async function prefill(form) {
+  let template;
+  try {
+    ({ template } = await api('/api/my/trip-template'));
+  } catch {
+    return; // 預填失敗不影響發車，空白表單照樣能用
+  }
+  if (!template) return;
+  const set = (name, value) => {
+    if (value !== null && value !== undefined) form.elements[name].value = value;
+  };
+  set('time', template.time);
+  set('returnTime', template.returnTime);
+  set('pickups', template.pickups.join('、'));
+  set('meetingPoint', template.meetingPoint);
+  set('seats', template.seats);
+  set('boardRule', template.boardRule);
+  set('fareOneWay', template.fareOneWay);
+  set('fareRoundTrip', template.fareRoundTrip);
+  set('note', template.note);
+  for (const box of form.querySelectorAll('input[name=spots]')) box.checked = template.spots.includes(box.value);
+  form.prepend(notice('已帶入你上一趟的資料，記得選日期'));
 }
 
 function detailRow(label, value) {
@@ -812,6 +845,24 @@ async function tripPage(id) {
     }
   };
   const shareButton = h('button', { class: 'secondary block', onclick: share }, icon('share'), '分享行程');
+  // 司機專用：整段發文文字（含連結），貼到 FB 社團或 Threads 就能發
+  const copySlot = h('div');
+  const copyPost = async () => {
+    copySlot.replaceChildren();
+    try {
+      await navigator.clipboard.writeText(trip.shareText);
+      copyButton.textContent = '已複製，去 FB 或 Threads 貼上';
+    } catch {
+      // 非 HTTPS 沒有 clipboard：把文字放進可選取的框，讓司機長按複製
+      const box = h('textarea', { readonly: true, rows: 10 });
+      box.value = trip.shareText;
+      copySlot.replaceChildren(notice('無法自動複製，請長按下面的文字全選複製'), box);
+      box.select();
+    }
+  };
+  const copyButton = trip.shareText
+    ? h('button', { class: 'block', onclick: copyPost }, '複製發文（FB／Threads）')
+    : null;
   // 站內點進來就回上一頁（保留首頁選的日期）；從分享連結直接進來沒有上一頁，回首頁
   const back = h(
     'button',
@@ -844,8 +895,11 @@ async function tripPage(id) {
         ),
         trip.returnTime ? detailRow('回程', trip.returnTime) : null,
         trip.note ? detailRow('備註', trip.note) : null,
+        trip.meetingPoint ? detailRow('集合點', trip.meetingPoint) : null,
       ),
     ),
+    copyButton,
+    copySlot,
     shareButton,
     shareSlot,
     ...(trip.isDriver ? driverPanel(trip) : passengerPanel(trip)),

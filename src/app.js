@@ -8,6 +8,7 @@ import {
   DomainError,
   SPOTS,
 } from './service.js';
+import { shareText } from './share.js';
 
 const SESSION_DAYS = 30;
 const MAX_BODY = 16 * 1024;
@@ -164,6 +165,9 @@ export function createApp({ db, line, baseUrl, devLogin = false, now = () => Dat
     if (method === 'GET' && path === '/api/my') {
       return send(res, 200, service.myActivity(requireUser(user)));
     }
+    if (method === 'GET' && path === '/api/my/trip-template') {
+      return send(res, 200, { template: service.tripTemplate(requireUser(user)) });
+    }
     if (method === 'GET' && path === '/api/trips') {
       const filter = { date: url.searchParams.get('date'), spot: url.searchParams.get('spot') };
       return send(res, 200, { trips: service.listTrips(filter) });
@@ -173,7 +177,10 @@ export function createApp({ db, line, baseUrl, devLogin = false, now = () => Dat
       return send(res, 201, { trip: service.createTrip(requireUser(user), body) });
     }
     if (method === 'GET' && (match = path.match(/^\/api\/trips\/(\d+)$/))) {
-      return send(res, 200, { trip: service.getTrip(Number(match[1]), user) });
+      const trip = service.getTrip(Number(match[1]), user);
+      // 發文文字只給司機本人，用來貼到 FB／Threads
+      if (trip.isDriver) trip.shareText = shareText(trip, tripUrl(trip));
+      return send(res, 200, { trip });
     }
     if (method === 'POST' && (match = path.match(/^\/api\/trips\/(\d+)\/cancel$/))) {
       await readJson(req);
@@ -207,7 +214,9 @@ export function createApp({ db, line, baseUrl, devLogin = false, now = () => Dat
         accepted ? 'accepted' : 'rejected',
       );
       const result = accepted ? '已被接受，可以查看司機聯絡方式' : '未被接受';
-      await notify(passenger, `你申請的 ${tripLabel(trip)} 行程${result}\n${tripUrl(trip)}`);
+      // 集合點只放進接受通知，被拒絕的乘客不該知道
+      const meet = accepted && trip.meeting_point ? `\n集合點：${trip.meeting_point}` : '';
+      await notify(passenger, `你申請的 ${tripLabel(trip)} 行程${result}${meet}\n${tripUrl(trip)}`);
       return send(res, 200, {});
     }
     if (method === 'POST' && (match = path.match(/^\/api\/requests\/(\d+)\/withdraw$/))) {

@@ -116,3 +116,47 @@ test('PR-FIND-03 可依浪點篩選，多浪點行程也會命中', async (t) =>
     [target.body.trip.id],
   );
 });
+
+test('PR-TRIP-05 發車表單帶入上一趟行程，日期不帶入', async (t) => {
+  const { user, clock } = await startApp(t);
+  const driver = await user('司機');
+  await driver.post('/api/trips', validTrip({ date: '2026-11-07', pickups: ['舊的上車點'] }));
+  clock.now += 1000;
+  await driver.post(
+    '/api/trips',
+    validTrip({
+      date: '2026-11-08',
+      time: '04:45',
+      spots: ['雙獅'],
+      pickups: ['南港車站'],
+      seats: 3,
+      boardRule: 'any',
+      fareOneWay: 150,
+      fareRoundTrip: 250,
+      returnTime: '11:00',
+      note: '不菸',
+      meetingPoint: '南港車站 2 號出口',
+    }),
+  );
+  const res = await driver.get('/api/my/trip-template');
+  assert.equal(res.status, 200);
+  assert.deepEqual(res.body.template, {
+    time: '04:45',
+    spots: ['雙獅'],
+    pickups: ['南港車站'],
+    seats: 3,
+    boardRule: 'any',
+    fareOneWay: 150,
+    fareRoundTrip: 250,
+    returnTime: '11:00',
+    note: '不菸',
+    meetingPoint: '南港車站 2 號出口',
+  });
+});
+
+test('PR-TRIP-05 從未發過車時沒有可帶入的資料', async (t) => {
+  const { user } = await startApp(t);
+  const res = await (await user('新司機')).get('/api/my/trip-template');
+  assert.equal(res.status, 200);
+  assert.equal(res.body.template, null);
+});
