@@ -160,3 +160,11 @@ test('PR-TRIP-05 從未發過車時沒有可帶入的資料', async (t) => {
   assert.equal(res.status, 200);
   assert.equal(res.body.template, null);
 });
+
+test('PR-TRIP-02 頭城已移出浪點選項，不能再發布', async (t) => {
+  const { user } = await startApp(t);
+  const driver = await user('司機');
+  const res = await driver.post('/api/trips', validTrip({ spots: ['頭城'] }));
+  assert.equal(res.status, 400);
+  assert.deepEqual(res.body.fields, ['spots']);
+});
