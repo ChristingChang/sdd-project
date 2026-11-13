@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-13T00:00:00+08:00",
+  "title": "Design System: 浪乘",
+  "extensions": {
+    "colorMeta": {
+      "ocean": { "role": "primary", "displayName": "外海藍 Offshore Blue", "canonical": "#0b6e8a", "tonalRamp": ["#05303c", "#084f63", "#0b6e8a", "#3a8ca5", "#6aaabd", "#9cc8d5", "#cfe6ec", "#e3f1f4"] },
+      "ocean-dark": { "role": "primary", "displayName": "深水藍 Deep Water", "canonical": "#084f63", "tonalRamp": ["#031f27", "#05303c", "#084f63", "#2d6e80", "#58909f", "#86b2be", "#b6d3db", "#e3f1f4"] },
+      "sand": { "role": "neutral", "displayName": "晨沙 Morning Sand", "canonical": "#f7f3ea", "tonalRamp": ["#3a3527", "#5e5744", "#857c66", "#aba28a", "#cbc3ad", "#e2dccb", "#efeadf", "#f7f3ea"] },
+      "surface": { "role": "neutral", "displayName": "白板 Board White", "canonical": "#ffffff", "tonalRamp": ["#1d2b30", "#3a4a50", "#5d6f76", "#8a999e", "#b9c4c7", "#dfe5e6", "#f1f5f5", "#ffffff"] },
+      "ink": { "role": "neutral", "displayName": "墨 Ink", "canonical": "#1d2b30", "tonalRamp": ["#0c1316", "#1d2b30", "#2f3f45", "#44565c", "#5d6f76", "#8a999e", "#b9c4c7", "#dfe5e6"] },
+      "muted": { "role": "neutral", "displayName": "霧 Haze", "canonical": "#5d6f76" },
+      "line": { "role": "neutral", "displayName": "細線 Hairline", "canonical": "#dfe5e6" },
+      "field-line": { "role": "neutral", "displayName": "欄線 Field Line", "canonical": "#b9c4c7" },
+      "tint": { "role": "neutral", "displayName": "淺潮 Shallow Tint", "canonical": "#e3f1f4" },
+      "selection": { "role": "neutral", "displayName": "選取 Selection", "canonical": "#cfe6ec" },
+      "ok": { "role": "tertiary", "displayName": "成行綠", "canonical": "#1b7a43", "tonalRamp": ["#0b3a1f", "#125a31", "#1b7a43", "#3f9663", "#6bb287", "#9bccad", "#c6e4d1", "#e0f2e7"] },
+      "warn": { "role": "tertiary", "displayName": "待確認黃", "canonical": "#8a5a00", "tonalRamp": ["#3d2800", "#5f3e00", "#8a5a00", "#a87a26", "#c49a55", "#dbbc86", "#eed8b0", "#fbefd5"] },
+      "danger": { "role": "tertiary", "displayName": "警示紅", "canonical": "#b3261e", "tonalRamp": ["#4f100d", "#7d1a15", "#b3261e", "#c65049", "#d77d77", "#e6a8a4", "#f1cfcc", "#f8e4e2"] },
+      "line-green": { "role": "secondary", "displayName": "LINE 綠（僅 LINE 登入）", "canonical": "#06c755" }
+    },
+    "typographyMeta": {
+      "brand": { "displayName": "Brand", "purpose": "頂端的「浪乘」品牌字，深水藍。" },
+      "headline": { "displayName": "Headline", "purpose": "每頁 h1、行程頁的日期時間。" },
+      "date-numeral": { "displayName": "Date numeral", "purpose": "日期鈕上的日，等寬數字。" },
+      "title": { "displayName": "Title", "purpose": "區塊標題、列表摘要、每列的時間。" },
+      "body": { "displayName": "Body", "purpose": "一般內文與輸入框。" },
+      "meta": { "displayName": "Meta", "purpose": "列的次要資訊、詳細資料欄名。" },
+      "label": { "displayName": "Label", "purpose": "表單標籤、按鈕文字。" },
+      "badge": { "displayName": "Badge", "purpose": "狀態標籤與座位膠囊。" },
+      "caption": { "displayName": "Caption", "purpose": "日期鈕上的星期、分頁列文字、行程數。" }
+    },
+    "shadows": [],
+    "motion": [
+      { "name": "state-fade", "value": "150ms ease-out", "purpose": "按鈕、日期鈕、列標題的顏色與外框變化。沒有位移動畫。" }
+    ],
+    "breakpoints": [
+      { "name": "date-strip-wide", "value": "600px", "purpose": "以上日期列九顆平分整列、不捲動。" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Date Chip",
+      "kind": "chip",
+      "refersTo": "date-chip",
+      "description": "日期列上的一天：星期、日期、右下角行程數。選中時海藍填滿。",
+      "html": "<div class=\"ds-dates\"><button class=\"ds-chip\" aria-pressed=\"false\"><span class=\"ds-chip-top\">今天</span><span class=\"ds-chip-main\">12</span></button><button class=\"ds-chip\" aria-pressed=\"true\"><span class=\"ds-chip-top\">明天</span><span class=\"ds-chip-main\">13</span><span class=\"ds-chip-count\">3</span></button><button class=\"ds-chip\" aria-pressed=\"false\"><span class=\"ds-chip-top\">週六</span><span class=\"ds-chip-main\">14</span><span class=\"ds-chip-count\">1</span></button></div>",
+      "css": ".ds-dates { display: flex; gap: 8px; padding: 2px 2px 14px; background: #f7f3ea; } .ds-chip { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 60px; height: 68px; padding: 0; border: 1px solid #dfe5e6; border-radius: 14px; background: #fff; color: #1d2b30; font: inherit; cursor: pointer; transition: background-color 150ms ease-out, border-color 150ms ease-out; } .ds-chip:hover { border-color: #b9c4c7; } .ds-chip:focus-visible { outline: 3px solid #084f63; outline-offset: 2px; } .ds-chip-top { color: #5d6f76; font-size: 12px; font-weight: 600; line-height: 1.2; } .ds-chip-main { font-size: 22px; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; } .ds-chip[aria-pressed='true'] { border-color: #0b6e8a; background: #0b6e8a; color: #fff; } .ds-chip[aria-pressed='true']:hover { background: #084f63; } .ds-chip[aria-pressed='true'] .ds-chip-top { color: #fff; } .ds-chip-count { position: absolute; right: -4px; bottom: -8px; min-width: 22px; height: 20px; padding: 0 6px; border: 2px solid #f7f3ea; border-radius: 999px; background: #0b6e8a; color: #fff; font-size: 12px; font-weight: 700; line-height: 16px; text-align: center; } .ds-chip[aria-pressed='true'] .ds-chip-count { background: #fff; color: #084f63; }"
+    },
+    {
+      "name": "Trip Row",
+      "kind": "custom",
+      "refersTo": "spot-tile",
+      "description": "一列一趟車：浪點方塊、時間與上車點、座位膠囊與箭頭。",
+      "html": "<a class=\"ds-row\" href=\"#\"><span class=\"ds-tile\">北堤</span><span class=\"ds-row-body\"><span class=\"ds-row-title\">05:30 出發</span><span class=\"ds-row-meta\">北堤・單程 $150・僅短板</span><span class=\"ds-row-meta\"><svg viewBox=\"0 0 24 24\" width=\"15\" height=\"15\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21zM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z\"/></svg>板橋新埔站</span></span><span class=\"ds-row-end\"><span class=\"ds-seat\">剩 2 位</span><svg viewBox=\"0 0 24 24\" width=\"20\" height=\"20\" fill=\"none\" stroke=\"#b9c4c7\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 6l6 6-6 6\"/></svg></span></a>",
+      "css": ".ds-row { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid #dfe5e6; color: #1d2b30; text-decoration: none; background: #f7f3ea; } .ds-row:hover .ds-row-title { color: #084f63; } .ds-row:active { opacity: 0.75; } .ds-row:focus-visible { outline: 3px solid #084f63; outline-offset: 2px; } .ds-tile { display: flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 14px; background: #e3f1f4; color: #084f63; font-size: 14px; font-weight: 700; } .ds-row-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; } .ds-row-title { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; transition: color 150ms ease-out; } .ds-row-meta { display: flex; align-items: center; gap: 4px; color: #5d6f76; font-size: 14px; } .ds-row-end { display: flex; align-items: center; gap: 2px; } .ds-seat { padding: 3px 10px; border: 1.5px solid #0b6e8a; border-radius: 999px; background: #fff; color: #084f63; font-size: 13px; font-weight: 600; white-space: nowrap; }"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "海藍主要動作：申請共乘、發布行程、儲存。",
+      "html": "<button class=\"ds-btn-primary\">申請共乘</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 10px 16px; border: 0; border-radius: 12px; background: #0b6e8a; color: #fff; font: inherit; font-weight: 600; cursor: pointer; transition: background-color 150ms ease-out; } .ds-btn-primary:hover { background: #084f63; } .ds-btn-primary:focus-visible { outline: 3px solid #084f63; outline-offset: 2px; } .ds-btn-primary:disabled { opacity: 0.55; cursor: default; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "白底次要動作：分享行程、登出、重新載入。",
+      "html": "<button class=\"ds-btn-secondary\">分享行程</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 16px; border: 1px solid #dfe5e6; border-radius: 12px; background: #fff; color: #1d2b30; font: inherit; font-weight: 600; cursor: pointer; transition: background-color 150ms ease-out; } .ds-btn-secondary:hover { background: #f1f5f5; } .ds-btn-secondary:focus-visible { outline: 3px solid #084f63; outline-offset: 2px; }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "紅框危險動作：取消行程、退出行程。",
+      "html": "<button class=\"ds-btn-danger\">取消行程</button>",
+      "css": ".ds-btn-danger { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 16px; border: 1px solid #b3261e; border-radius: 12px; background: #fff; color: #b3261e; font: inherit; font-weight: 600; cursor: pointer; transition: background-color 150ms ease-out; } .ds-btn-danger:hover { background: #fdf1f0; } .ds-btn-danger:focus-visible { outline: 3px solid #084f63; outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "白底欄線輸入框，44px 高；錯誤時紅框。",
+      "html": "<label class=\"ds-label\">上車點<input class=\"ds-input\" placeholder=\"例如：板橋新埔站、後山埤站\"></label>",
+      "css": ".ds-label { display: block; font-size: 14px; font-weight: 600; color: #1d2b30; } .ds-input { display: block; width: 100%; box-sizing: border-box; min-height: 44px; margin-top: 4px; padding: 9px 10px; border: 1px solid #b9c4c7; border-radius: 10px; background: #fff; color: #1d2b30; font: inherit; font-weight: 400; } .ds-input::placeholder { color: #5d6f76; } .ds-input:focus-visible { outline: 3px solid #084f63; outline-offset: 2px; } .ds-input[aria-invalid='true'] { border-color: #b3261e; }"
+    },
+    {
+      "name": "Status Badges",
+      "kind": "chip",
+      "refersTo": "status-badge",
+      "description": "語意色只出現在這裡：待確認、已接受、已拒絕／已滿／已取消。",
+      "html": "<span class=\"ds-badge ds-badge-pending\">待確認</span> <span class=\"ds-badge ds-badge-ok\">已接受</span> <span class=\"ds-badge ds-badge-danger\">已滿</span> <span class=\"ds-badge\">已出發</span>",
+      "css": ".ds-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #e3f1f4; color: #084f63; font-size: 13px; font-weight: 600; white-space: nowrap; } .ds-badge-pending { background: #fbefd5; color: #8a5a00; } .ds-badge-ok { background: #e0f2e7; color: #1b7a43; } .ds-badge-danger { background: #f8e4e2; color: #b3261e; }"
+    },
+    {
+      "name": "Bottom Tab Bar",
+      "kind": "nav",
+      "refersTo": "tab",
+      "description": "固定在底部的三格導覽；發車是海藍實心圓。",
+      "html": "<nav class=\"ds-tabbar\"><a class=\"ds-tab\" aria-current=\"page\" href=\"#\"><svg viewBox=\"0 0 24 24\" width=\"24\" height=\"24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14zM20 20l-4-4\"/></svg><span>找車</span></a><a class=\"ds-tab\" href=\"#\"><span class=\"ds-post\"><svg viewBox=\"0 0 24 24\" width=\"22\" height=\"22\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 5v14M5 12h14\"/></svg></span><span>發車</span></a><a class=\"ds-tab\" href=\"#\"><svg viewBox=\"0 0 24 24\" width=\"24\" height=\"24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 21a8 8 0 0 0-16 0M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8z\"/></svg><span>我的</span></a></nav>",
+      "css": ".ds-tabbar { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid #dfe5e6; background: rgba(255, 255, 255, 0.96); } .ds-tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 64px; color: #5d6f76; font-size: 12px; font-weight: 600; text-decoration: none; } .ds-tab > svg { margin: 6px 0; } .ds-tab:hover { color: #1d2b30; } .ds-tab[aria-current='page'] { color: #084f63; } .ds-tab:focus-visible { outline: 3px solid #084f63; outline-offset: -3px; } .ds-post { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: #0b6e8a; color: #fff; transition: background-color 150ms ease-out; } .ds-tab:hover .ds-post { background: #084f63; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "清晨的出發表",
+    "overview": "浪乘的畫面像車站的出發時刻表，只是時刻表上寫的是去宜蘭衝浪的車。使用者打開它只想知道三件事：幾點、去哪、還有沒有位子。第一層導航就是日期，每天標出有幾趟；下面一列一趟車，左邊是浪點、中間是時間和上車點、右邊是剩幾位。版面不需要說明，看一眼就懂。\n\n整體清爽、可靠、不說廢話。沙色地、白色容器、一個海藍主色，全部平面、沒有陰影。人味不靠裝飾，而是靠口語的文案（見 PRODUCT.md 的語氣）。密度偏高但不擠：每一列都是可以點的完整資訊，留白用在列與列、區塊與區塊之間。\n\n這套結構借自使用者熟悉的揪團 App（日期列、列表、底部分頁列），但不借它的品牌外觀。",
+    "keyCharacteristics": [
+      "日期是第一層導航：橫向日期列，「全部」放第一顆，預設選明天",
+      "一列一趟車：浪點方塊｜時間與上車點｜座位膠囊與箭頭",
+      "單一海藍主色，語意色只出現在狀態標籤",
+      "平面無陰影，深度靠沙色地上的白色容器加 1px 細線",
+      "主要導覽在底部，拇指搆得到；所有可點的東西至少 44px 高"
+    ],
+    "rules": [
+      { "name": "The One Accent Rule", "body": "海藍是唯一的動作色。綠、黃、紅只出現在狀態標籤和錯誤提示，從不拿來做按鈕或裝飾。", "section": "colors" },
+      { "name": "The Line Green Rule", "body": "LINE 綠只屬於 LINE 登入按鈕，其他地方一律不用。", "section": "colors" },
+      { "name": "The Tabular Time Rule", "body": "所有時間、日期、數量都用等寬數字（font-variant-numeric: tabular-nums）。出發表的數字要對齊。", "section": "typography" },
+      { "name": "The 全部-First Rule", "body": "日期列的第一顆永遠是「全部」。手機上日期列會捲動，放在最後會被藏到畫面外，而規格 PR-FIND-05 要求一鍵切換到全部日期。", "section": "layout" },
+      { "name": "The Thumb Rule", "body": "主要導覽在畫面底部；所有可點的東西至少 44px 高。", "section": "layout" },
+      { "name": "The Flat Sand Rule", "body": "不用陰影。要讓東西浮起來，就把它放進白色容器；要讓它更重要，就用海藍填滿，不是加陰影。", "section": "elevation" }
+    ],
+    "dos": [
+      "Do 讓每一列一眼回答三件事：幾點、去哪、剩幾位。",
+      "Do 把「全部」放在日期列第一顆，預設選明天。",
+      "Do 只用海藍當動作色；狀態用綠、黃、紅標籤表示。",
+      "Do 用自繪的 2px 線條 SVG 圖示，跟著 currentColor。",
+      "Do 時間、日期、數量都用等寬數字。",
+      "Do 焦點框用 3px 深水藍，外推 2px。"
+    ],
+    "donts": [
+      "Don't 加陰影；要分層就用白色容器加細線。",
+      "Don't 為行程放照片或假縮圖；浪點方塊就是這一欄的主角。",
+      "Don't 借用參考 App 的橘色、字體或 Logo；只借結構。",
+      "Don't 用 Unicode 符號或表情符號代替圖示（例如「＋」「▶」）。",
+      "Don't 把 LINE 綠用在 LINE 登入以外的地方。",
+      "Don't 把行程列做成一張張卡片牆；列表用細線分隔就好。"
+    ]
+  }
+}
