@@ -141,11 +141,13 @@ export function createService(db, { now = () => Date.now() } = {}) {
         throw new DomainError(400, 'invalid', '出發時間必須晚於現在', ['date', 'time']);
       }
       const note = typeof input.note === 'string' ? input.note.trim().slice(0, 300) : '';
+      const meetingPoint =
+        typeof input.meetingPoint === 'string' ? input.meetingPoint.trim().slice(0, 100) : '';
       const { lastInsertRowid } = db
         .prepare(
           `INSERT INTO trips (driver_id, date, time, depart_ts, spots, pickups, seats, board_rule,
-             fare_one_way, fare_round_trip, return_time, note, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             fare_one_way, fare_round_trip, return_time, note, meeting_point, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           user.id,
@@ -160,6 +162,7 @@ export function createService(db, { now = () => Date.now() } = {}) {
           isBlank(input.fareRoundTrip) ? null : input.fareRoundTrip,
           isBlank(input.returnTime) ? null : input.returnTime,
           note || null,
+          meetingPoint || null,
           now(),
         );
       return present(rawTrip(Number(lastInsertRowid)));
@@ -190,6 +193,7 @@ export function createService(db, { now = () => Date.now() } = {}) {
       const live = trip.status === 'open';
       if (viewer.id === trip.driver_id) {
         view.isDriver = true;
+        view.meetingPoint = trip.meeting_point;
         view.requests = db
           .prepare(
             `SELECT r.id, r.pickup, r.board_type, r.status, u.display_name, u.picture_url, u.contact
@@ -220,7 +224,10 @@ export function createService(db, { now = () => Date.now() } = {}) {
           pickup: mine.pickup,
           boardType: mine.board_type,
         };
-        if (live && mine.status === 'accepted') view.driverContact = getUser(trip.driver_id).contact;
+        if (live && mine.status === 'accepted') {
+          view.driverContact = getUser(trip.driver_id).contact;
+          view.meetingPoint = trip.meeting_point;
+        }
       }
       return view;
     },
@@ -299,6 +306,26 @@ export function createService(db, { now = () => Date.now() } = {}) {
         )
         .all(trip.id);
       return { trip, passengers };
+    },
+
+    // 發車表單預填：司機最近一次發布的行程（含已取消），日期刻意不帶
+    tripTemplate(user) {
+      const trip = db
+        .prepare('SELECT * FROM trips WHERE driver_id = ? ORDER BY created_at DESC, id DESC LIMIT 1')
+        .get(user.id);
+      if (!trip) return null;
+      return {
+        time: trip.time,
+        spots: JSON.parse(trip.spots),
+        pickups: JSON.parse(trip.pickups),
+        seats: trip.seats,
+        boardRule: trip.board_rule,
+        fareOneWay: trip.fare_one_way,
+        fareRoundTrip: trip.fare_round_trip,
+        returnTime: trip.return_time,
+        note: trip.note,
+        meetingPoint: trip.meeting_point,
+      };
     },
 
     myActivity(user) {

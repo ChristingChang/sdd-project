@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS trips (
   fare_round_trip INTEGER,
   return_time TEXT,
   note TEXT,
+  meeting_point TEXT,
   status TEXT NOT NULL DEFAULT 'open',
   created_at INTEGER NOT NULL
 );
@@ -53,5 +54,12 @@ export function openDb(path = ':memory:') {
   const db = new DatabaseSync(path);
   db.exec('PRAGMA foreign_keys = ON;');
   db.exec(SCHEMA);
+  migrate(db);
   return db;
+}
+
+// 舊資料庫補欄位：CREATE TABLE IF NOT EXISTS 不會幫既有的表加新欄位
+function migrate(db) {
+  const columns = db.prepare('PRAGMA table_info(trips)').all().map((c) => c.name);
+  if (!columns.includes('meeting_point')) db.exec('ALTER TABLE trips ADD COLUMN meeting_point TEXT');
 }
