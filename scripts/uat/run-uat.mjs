@@ -599,6 +599,26 @@ await tc('TC-CONTACT-02b', '（接續）填完儲存後出現申請表單', asyn
   await xin.waitFor(`return $$('select[name=pickup]').length`, '申請表單');
 });
 
+// PR-CONTACT-03：用另一個新帳號，才不會打亂小新的流程。截圖停在格式錯誤的畫面，儲存成功另列 06b
+const shi = await newPage('小石');
+await tc('TC-CONTACT-06', '聯絡方式要是手機號碼或 LINE ID（格式錯誤被擋）', async (ok) => {
+  await login(shi, '小石');
+  await shi.goto(`/trips/${T1}`);
+  for (const bad of ['私訊我', '12345']) {
+    await shi.eval(`$$('.notice.error').forEach((n) => n.remove()); setVal('form input', ${JSON.stringify(bad)}); click('儲存','button');`);
+    await shi.waitFor(`return $$('.notice.error').length`, `「${bad}」的錯誤訊息`);
+    const r = await shi.eval(`const i = $$('form input')[0]; return { msg: $$('.notice.error')[0].textContent, invalid: i.getAttribute('aria-invalid') === 'true', stay: txt().includes('申請前先填聯絡方式') }`);
+    ok(r.msg === '聯絡方式格式不對，請填 LINE ID 或手機號碼', `「${bad}」訊息：${r.msg}`);
+    ok(r.invalid, `「${bad}」欄位沒有被標示`);
+    ok(r.stay, `「${bad}」離開了聯絡方式表單`);
+  }
+});
+await tc('TC-CONTACT-06b', '（接續）填手機號碼 0912-345-678 儲存成功', async (ok) => {
+  await shi.eval(`setVal('form input', '0912-345-678'); click('儲存','button');`);
+  await shi.waitFor(`return $$('select[name=pickup]').length`, '申請表單');
+  ok(!(await shi.eval(`return $$('.notice.error').length`)), '還有錯誤訊息');
+});
+
 // REQ-08 / FIND-07：座位 1
 const T2 = await publish(akai, { ...STD, seats: 1, time: '06:00' });
 await apply(yu, T2, '後山埤站', 'short');

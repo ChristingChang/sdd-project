@@ -32,6 +32,13 @@ const isTime = (v) => typeof v === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(
 const isBlank = (v) => v === undefined || v === null || v === '';
 const isFare = (v) => Number.isInteger(v) && v >= 0 && v <= 5000;
 
+// PR-CONTACT-03：手機號碼（09 開頭 10 碼，可含空格或連字號）或 LINE ID（4～20 字英數與 . _ -，可加 @ 前綴）。
+// 只由數字、空格、連字號組成的一律當電話檢查，打錯的電話才不會被當成 LINE ID 存起來
+function isContact(v) {
+  if (/^[\d\s-]+$/.test(v)) return /^09\d{8}$/.test(v.replace(/[\s-]/g, ''));
+  return /^@?[A-Za-z0-9._-]{4,20}$/.test(v);
+}
+
 // Date.parse 會把 02-31 默默進位成三月，所以要轉回來比對
 function isDate(v) {
   if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
@@ -120,6 +127,9 @@ export function createService(db, { now = () => Date.now() } = {}) {
     setContact(user, contact) {
       const value = typeof contact === 'string' ? contact.trim().slice(0, 60) : '';
       if (!value) throw new DomainError(400, 'invalid', '請填寫聯絡方式', ['contact']);
+      if (!isContact(value)) {
+        throw new DomainError(400, 'invalid', '聯絡方式格式不對，請填 LINE ID 或手機號碼', ['contact']);
+      }
       db.prepare('UPDATE users SET contact = ? WHERE id = ?').run(value, user.id);
       return getUser(user.id);
     },

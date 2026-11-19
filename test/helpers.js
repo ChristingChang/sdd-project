@@ -81,8 +81,9 @@ export async function startApp(t, { line: lineOverrides = {}, devLogin = true } 
     };
   };
 
-  // 建立已登入、已填聯絡方式的用戶
-  const user = async (name, contact = `line-${name}`) => {
+  // 建立已登入、已填聯絡方式的用戶。預設聯絡方式要符合 PR-CONTACT-03 的 LINE ID 格式（名字可能是中文，不能直接拿來用）
+  let userSeq = 0;
+  const user = async (name, contact = `line-user${++userSeq}`) => {
     const c = client();
     await c.post('/auth/dev', { name });
     if (contact) await c.put('/api/me', { contact });

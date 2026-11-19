@@ -8,9 +8,11 @@ test('PR-METRIC-01 只計入已出發、未取消、有已確認乘客的行程�
   const db = openDb();
   const clock = { now: NOW };
   const service = createService(db, { now: () => clock.now });
+  // 聯絡方式要符合 PR-CONTACT-03 的 LINE ID 格式，名字是中文不能直接拿來用
+  let seq = 0;
   const user = (name) => {
     const created = service.upsertLineUser({ lineUserId: name, displayName: name });
-    return service.setContact(created, `${name}-line`);
+    return service.setContact(created, `line-user${++seq}`);
   };
   const driver = user('司機');
   const passenger = user('乘客');

@@ -117,6 +117,28 @@ test('PR-CONTACT-01 沒填聯絡方式不能發行程或申請', async (t) => {
   assert.equal(request.body.error, 'contact_required');
 });
 
+test('PR-CONTACT-03 聯絡方式須為手機號碼或 LINE ID', async (t) => {
+  const { client } = await startApp(t);
+  const c = client();
+  await c.post('/auth/dev', { name: '填聯絡方式的人' });
+  const save = (contact) => c.put('/api/me', { contact });
+
+  for (const ok of ['0912345678', '0912-345-678', '0912 345 678', 'akai_surf', 'akai.line-2', '@akai', 'AKAI99']) {
+    const res = await save(ok);
+    assert.equal(res.status, 200, `應該接受：${ok}`);
+    assert.equal(res.body.user.contact, ok);
+  }
+  // 純數字一律當電話看：不是 09 開頭 10 碼就擋，避免把打錯的電話當成 LINE ID 存起來
+  for (const bad of ['私訊我', '你好 akai', 'abc', 'a'.repeat(21), '12345', '091234567', '09123456789', 'akai line', 'akai#1']) {
+    const res = await save(bad);
+    assert.equal(res.status, 400, `應該擋下：${bad}`);
+    assert.deepEqual(res.body.fields, ['contact']);
+    assert.match(res.body.message, /LINE ID 或手機號碼/);
+  }
+  // 被擋下時不能蓋掉原本存好的聯絡方式
+  assert.equal((await c.get('/api/me')).body.user.contact, 'AKAI99');
+});
+
 test('PR-CONTACT-02 聯絡方式只在接受後顯示給該司機與該乘客', async (t) => {
   const { user, driver, client, tripId } = await setup(t);
   const a = await user('乘客A', 'a-line');
