@@ -157,8 +157,10 @@ function notice(text, kind = '') {
 }
 
 function errorText(error) {
-  const names = (error.fields ?? []).map((field) => FIELD_LABEL[field] ?? field);
-  return names.length ? `${error.message}：${[...new Set(names)].join('、')}` : error.message;
+  const names = [...new Set((error.fields ?? []).map((field) => FIELD_LABEL[field] ?? field))];
+  // 訊息本身已經點名欄位（例如「請填寫聯絡方式」）就不再重複列出，避免「請填寫聯絡方式：聯絡方式」
+  if (!names.length || names.every((name) => error.message.includes(name))) return error.message;
+  return `${error.message}：${names.join('、')}`;
 }
 
 // 紅框之外也標 aria-invalid，螢幕閱讀器才會念出「無效」，不只靠顏色
@@ -458,20 +460,25 @@ function contactForm(onDone) {
     required: true,
   });
   const message = h('div');
+  // novalidate：空白與只有空格都交給伺服器判斷，統一用紅框＋頁內訊息呈現，不跳瀏覽器原生提示
   return h(
     'form',
     {
+      novalidate: true,
       onsubmit: async (event) => {
         event.preventDefault();
-        const button = event.currentTarget.querySelector('button');
+        const form = event.currentTarget;
+        const button = form.querySelector('button');
         if (button.disabled) return;
         button.disabled = true;
         try {
           const { user } = await api('/api/me', { method: 'PUT', body: { contact: input.value } });
           me = user;
+          markFields(form);
           if (onDone) onDone();
           else message.replaceChildren(notice('已儲存聯絡方式'));
         } catch (error) {
+          markFields(form, error.fields);
           message.replaceChildren(notice(errorText(error), 'error'));
         } finally {
           button.disabled = false;
@@ -481,7 +488,7 @@ function contactForm(onDone) {
     message,
     h(
       'label',
-      {},
+      { 'data-field': 'contact' },
       '聯絡方式',
       input,
       h('span', { class: 'field-note' }, '只有在申請被接受後，才會顯示給同行程的司機或乘客'),
