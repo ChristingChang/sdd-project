@@ -20,6 +20,7 @@ cp .env.example .env   # 沒有第三方套件，不需要 npm install
 npm start              # http://localhost:3001
 npm test
 npm run stats          # 每週成行趟數
+npm run uat            # UAT 跑法 A 自動化（無頭 Edge），截圖與報告寫到 docs/uat/，約 5 分鐘
 ```
 
 說「完成」之前，必須跑過測試並貼出結果。
