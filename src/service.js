@@ -1,7 +1,12 @@
 // 領域規則。所有函式都是同步的：單一 Node 行程內不會交錯執行，
 // 所以「檢查座位 → 寫入」不會發生超賣。若改成多行程部署，這個前提要重新檢視。
 
-export const SPOTS = ['北堤', '雙獅', '頭城', '烏石港', '外澳', '宜蘭其他'];
+// 2026-11-13：移除頭城（既有行程照常顯示，只是不能再發）；烏石港併入北堤；新增蜜月灣
+export const SPOTS = ['北堤', '雙獅', '外澳', '蜜月灣', '宜蘭其他'];
+// 選項上顯示的名稱：補上別名，讓只知道另一個叫法的人也認得
+export const SPOT_LABELS = Object.fromEntries(
+  SPOTS.map((spot) => [spot, { 北堤: '北堤（烏石港）', 蜜月灣: '蜜月灣（大溪）' }[spot] ?? spot]),
+);
 export const BOARD_RULES = { none: '不載板', short: '僅短板', any: '長短板皆可' };
 export const BOARD_TYPES = { none: '不帶板', short: '短板', long: '長板' };
 // 每種載板條件允許乘客帶的浪板類型（PR-REQ-07）
@@ -26,6 +31,13 @@ const forbidden = () => new DomainError(403, 'forbidden', '沒有權限');
 const isTime = (v) => typeof v === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
 const isBlank = (v) => v === undefined || v === null || v === '';
 const isFare = (v) => Number.isInteger(v) && v >= 0 && v <= 5000;
+
+// PR-CONTACT-03：手機號碼（09 開頭 10 碼，可含空格或連字號）或 LINE ID（4～20 字英數與 . _ -，可加 @ 前綴）。
+// 只由數字、空格、連字號組成的一律當電話檢查，打錯的電話才不會被當成 LINE ID 存起來
+function isContact(v) {
+  if (/^[\d\s-]+$/.test(v)) return /^09\d{8}$/.test(v.replace(/[\s-]/g, ''));
+  return /^@?[A-Za-z0-9._-]{4,20}$/.test(v);
+}
 
 // Date.parse 會把 02-31 默默進位成三月，所以要轉回來比對
 function isDate(v) {
@@ -115,6 +127,9 @@ export function createService(db, { now = () => Date.now() } = {}) {
     setContact(user, contact) {
       const value = typeof contact === 'string' ? contact.trim().slice(0, 60) : '';
       if (!value) throw new DomainError(400, 'invalid', '請填寫聯絡方式', ['contact']);
+      if (!isContact(value)) {
+        throw new DomainError(400, 'invalid', '聯絡方式格式不對，請填 LINE ID 或手機號碼', ['contact']);
+      }
       db.prepare('UPDATE users SET contact = ? WHERE id = ?').run(value, user.id);
       return getUser(user.id);
     },
@@ -141,11 +156,13 @@ export function createService(db, { now = () => Date.now() } = {}) {
         throw new DomainError(400, 'invalid', '出發時間必須晚於現在', ['date', 'time']);
       }
       const note = typeof input.note === 'string' ? input.note.trim().slice(0, 300) : '';
+      const meetingPoint =
+        typeof input.meetingPoint === 'string' ? input.meetingPoint.trim().slice(0, 100) : '';
       const { lastInsertRowid } = db
         .prepare(
           `INSERT INTO trips (driver_id, date, time, depart_ts, spots, pickups, seats, board_rule,
-             fare_one_way, fare_round_trip, return_time, note, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             fare_one_way, fare_round_trip, return_time, note, meeting_point, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           user.id,
@@ -160,6 +177,7 @@ export function createService(db, { now = () => Date.now() } = {}) {
           isBlank(input.fareRoundTrip) ? null : input.fareRoundTrip,
           isBlank(input.returnTime) ? null : input.returnTime,
           note || null,
+          meetingPoint || null,
           now(),
         );
       return present(rawTrip(Number(lastInsertRowid)));
@@ -190,6 +208,7 @@ export function createService(db, { now = () => Date.now() } = {}) {
       const live = trip.status === 'open';
       if (viewer.id === trip.driver_id) {
         view.isDriver = true;
+        view.meetingPoint = trip.meeting_point;
         view.requests = db
           .prepare(
             `SELECT r.id, r.pickup, r.board_type, r.status, u.display_name, u.picture_url, u.contact
@@ -220,7 +239,10 @@ export function createService(db, { now = () => Date.now() } = {}) {
           pickup: mine.pickup,
           boardType: mine.board_type,
         };
-        if (live && mine.status === 'accepted') view.driverContact = getUser(trip.driver_id).contact;
+        if (live && mine.status === 'accepted') {
+          view.driverContact = getUser(trip.driver_id).contact;
+          view.meetingPoint = trip.meeting_point;
+        }
       }
       return view;
     },
@@ -299,6 +321,26 @@ export function createService(db, { now = () => Date.now() } = {}) {
         )
         .all(trip.id);
       return { trip, passengers };
+    },
+
+    // 發車表單預填：司機最近一次發布的行程（含已取消），日期刻意不帶
+    tripTemplate(user) {
+      const trip = db
+        .prepare('SELECT * FROM trips WHERE driver_id = ? ORDER BY created_at DESC, id DESC LIMIT 1')
+        .get(user.id);
+      if (!trip) return null;
+      return {
+        time: trip.time,
+        spots: JSON.parse(trip.spots),
+        pickups: JSON.parse(trip.pickups),
+        seats: trip.seats,
+        boardRule: trip.board_rule,
+        fareOneWay: trip.fare_one_way,
+        fareRoundTrip: trip.fare_round_trip,
+        returnTime: trip.return_time,
+        note: trip.note,
+        meetingPoint: trip.meeting_point,
+      };
     },
 
     myActivity(user) {
