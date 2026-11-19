@@ -22,7 +22,7 @@ for (const block of cases.split(/\n## /).slice(1)) {
 const ICON = { PASS: '✅ 通過', PARTIAL: '⚠️ 部分（推播需真 LINE）', FAIL: '❌ 失敗' };
 const WHO = { 阿凱: '司機阿凱', 小魚: '乘客小魚', 小浪: '乘客小浪', 小沙: '乘客小沙', 小新: '新使用者小新', 訪客: '訪客（未登入）' };
 const NOTE = {
-  'TC-CONTACT-03': '輸入框沒有紅框也沒有 `aria-invalid`；訊息重複成「請填寫聯絡方式：聯絡方式」。原因：`public/app.js` 的 `contactForm` 沒呼叫 `markFields`，欄位也沒有 `data-field`。',
+  'TC-CONTACT-03': '2026-11-19 首輪失敗（輸入框沒被標示、訊息重複成「請填寫聯絡方式：聯絡方式」），已修正 `public/app.js` 的 `contactForm` 與 `errorText` 後重跑通過。',
   'TC-MEET-03': '頁面上看得到集合點；伺服器 log 的接受推播文字含「集合點：後山埤站 1 號出口，白色 RAV4」。手機實際收到推播仍需跑法 B。',
   'TC-CANCEL-01': '行程頁標示已取消、取消按鈕消失、首頁不再列出；log 有 2 則「已被司機取消」推播（已接受＋待確認各一）。手機實際收到推播仍需跑法 B。',
   'TC-CANCEL-04': '申請卡消失、重新出現申請表單、座位回到剩 2 位；log 有「小魚 退出了你…」推播。手機實際收到推播仍需跑法 B。',
@@ -50,6 +50,7 @@ for (const r of results) L.push(`| [${r.id}](#${r.id.toLowerCase()}) | ${r.title
 L.push('');
 
 L.push('## 需要處理', '');
+if (!results.some((x) => x.status === 'FAIL')) L.push('無失敗案例。');
 for (const r of results.filter((x) => x.status === 'FAIL')) {
   L.push(`- **${r.id} ${r.title}**：${NOTE[r.id] ?? r.fails.join('；')}`);
 }
