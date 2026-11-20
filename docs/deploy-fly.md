@@ -2,11 +2,16 @@
 
 設定檔：`fly.toml`、`Dockerfile`。機房在東京（`nrt`），資料庫放在 1GB 的 volume 上。
 
-## 費用（2026-11-19 查詢，以官方為準）
+## 費用（2026-11-20 查詢東京 nrt 價格，以官方為準）
 
-- 最小機器 shared-cpu-1x 256MB：約 2.19 美元/月，閒置自動關機時更少
+- 最小機器 shared-cpu-1x 256MB：東京 2.87 美元/月（24 小時開機；美國 Ashburn 是 2.19 美元，東京貴約 30%）。閒置自動關機時更少
 - Volume：0.15 美元/GB/月（1GB）
-- 個人帳號單月帳單低於 5 美元時免收。沒有免費方案，帳號要綁信用卡
+- 流量：亞太區 0.04 美元/GB，小網站可忽略。共用 IPv4 免費，不需要另買專用 IPv4
+- 快照：每月前 10GB 免費
+- [計算機](https://fly.io/calculator/)估算（1 台 shared-cpu-1x 256MB、nrt、1GB volume）：**約 3.02 美元/月**
+- 帳單低於 5 美元免收，這個配置在範圍內
+- 註冊送 1 美元額度，不用綁信用卡。2026-11-20 第一次部署（建 app、volume、deploy）都沒有被要求綁卡；額度用完後是否要綁卡，以 Fly 的通知為準
+- 價格查法：[定價頁](https://fly.io/pricing) 表格上方的機房下拉選單要切到 **Tokyo**，預設顯示的是美國 Ashburn
 - 官方價格：https://fly.io/docs/about/pricing/
 
 ## 第一次部署
@@ -21,7 +26,9 @@
 
    裝完重開終端機，跑 `fly version` 確認有裝好。
 
-2. **登入並綁信用卡**：`fly auth login`，會開瀏覽器。到 Fly 網站的 Billing 頁面加上信用卡。
+2. **登入**：`fly auth login`，會開瀏覽器註冊或登入。目前不用先綁信用卡；之後 Fly 要求時再到 Billing 頁面加上。
+
+   安裝程式要建立 `fly` 捷徑時會跳出管理員權限視窗。拒絕的話 `fly` 指令不能用，改用 `& "$env:USERPROFILE\.fly\bin\flyctl.exe"`，後面參數一樣。
 
 3. **建立 app**（不要用 `fly launch`，它會改寫 `fly.toml`）：
 
@@ -42,8 +49,10 @@
 5. **設定秘密**：把本機 `.env` 裡的三個 LINE 值填進去。秘密只存在 Fly，不寫進任何檔案：
 
    ```bash
-   fly secrets set LINE_LOGIN_CHANNEL_ID=xxx LINE_LOGIN_CHANNEL_SECRET=xxx LINE_MESSAGING_ACCESS_TOKEN=xxx
+   fly secrets set --stage LINE_LOGIN_CHANNEL_ID=xxx LINE_LOGIN_CHANNEL_SECRET=xxx LINE_MESSAGING_ACCESS_TOKEN=xxx
    ```
+
+   `--stage` 是先存起來、下一次部署時才套用。第一次部署前還沒有機器，所以要加；之後更新秘密時拿掉 `--stage`，機器會直接重啟套用。`fly secrets list` 可以確認名稱有沒有設好（只顯示名稱，不顯示值）。
 
    **不要**設定 `DEV_LOGIN`。正式環境開了伺服器會拒絕啟動。
 
