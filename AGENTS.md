@@ -10,7 +10,7 @@
 ## 規格在哪
 
 - 需求：GitHub Issue #1（`PR-*` 編號是凍結的，測試名稱以它開頭）
-- 架構：`docs/adr/`；領域語言：`CONTEXT.md`；LINE 設定：`docs/line-setup.md`
+- 架構：`docs/adr/`；領域語言：`CONTEXT.md`；LINE 設定：`docs/line-setup.md`；部署：`docs/deploy-fly.md`
 - 兩份衝突、或規格沒寫的行為：**停下來問**，不要自己決定。
 
 ## 怎麼跑

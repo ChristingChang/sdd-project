@@ -1,0 +1,34 @@
+# Fly.io 部署設定。步驟見 docs/deploy-fly.md
+# 秘密（LINE 憑證）不寫在這裡，用 `fly secrets set` 設定
+
+# App 名稱全 Fly 唯一；被用走就換一個，並同步改下面的 BASE_URL
+app = 'surfpool-langcheng'
+# 東京機房，離台灣最近
+primary_region = 'nrt'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[env]
+  NODE_ENV = 'production'
+  PORT = '8080'
+  BASE_URL = 'https://surfpool-langcheng.fly.dev'
+  # 放在 volume 上，重新部署不會消失
+  DB_PATH = '/data/carpool.db'
+
+# 持久硬碟。只能掛在一台機器上，所以整個 app 只能跑一台（見 docs/adr/0001）
+[mounts]
+  source = 'carpool_data'
+  destination = '/data'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # 沒人用時自動關機省錢，有請求進來再開機（約 1–2 秒）
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '256mb'
