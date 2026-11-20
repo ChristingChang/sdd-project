@@ -620,7 +620,7 @@ async function newTripPage() {
         'fareOneWay',
         '單程車資（元）',
         h('input', { type: 'number', name: 'fareOneWay', min: 0, inputmode: 'numeric' }),
-        '車資僅限分攤油資與過路費，不得營利載客',
+        '共乘車資以分攤油資與過路費為原則，請勿以載客營利為業',
       ),
       field(
         'fareRoundTrip',
