@@ -241,9 +241,9 @@ await tc('TC-TRIP-09', '第一次發車表單全空', async (ok) => {
   ok(r.checked === 0, '有浪點被勾選');
 });
 
-await tc('TC-TRIP-07', '發車頁提示車資僅限分攤', async (ok) => {
+await tc('TC-TRIP-07', '發車頁提示車資以分攤為原則', async (ok) => {
   const note = await akai.eval(`return $$('[data-field=fareOneWay] .field-note')[0]?.textContent`);
-  ok(note === '車資僅限分攤油資與過路費，不得營利載客', '單程車資下方提示不對：' + note);
+  ok(note === '共乘車資以分攤油資與過路費為原則，請勿以載客營利為業', '單程車資下方提示不對：' + note);
 });
 
 await tc('TC-TRIP-03', '漏填必填欄位無法發布並標示欄位', async (ok) => {
