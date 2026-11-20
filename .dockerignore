@@ -1,0 +1,16 @@
+# 秘密與本機資料庫絕對不能進映像檔
+.env
+.env.*
+data/
+*.db
+
+.git/
+node_modules/
+docs/
+test/
+scripts/
+.claude/
+.agents/
+.codex/
+.impeccable/
+.scratch/
