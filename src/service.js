@@ -124,6 +124,15 @@ export function createService(db, { now = () => Date.now() } = {}) {
 
     getUser,
 
+    // PR-LEGAL-05：按下「同意並以 LINE 登入」即同意當下版本的條款
+    acceptTerms(user, version) {
+      db.prepare('UPDATE users SET terms_version = ?, terms_accepted_at = ? WHERE id = ?').run(
+        version,
+        now(),
+        user.id,
+      );
+    },
+
     setContact(user, contact) {
       const value = typeof contact === 'string' ? contact.trim().slice(0, 60) : '';
       if (!value) throw new DomainError(400, 'invalid', '請填寫聯絡方式', ['contact']);

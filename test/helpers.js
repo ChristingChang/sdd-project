@@ -16,7 +16,8 @@ export const validTrip = (overrides = {}) => ({
   ...overrides,
 });
 
-// 透過真實 HTTP 測試：這是專案的接縫，測試不碰內部函式
+// 透過真實 HTTP 測試：這是專案的接縫，測試不碰內部函式。
+// 回傳的 service 只用來斷言 HTTP 看不到的持久化狀態（例如同意條款紀錄），不要拿來建資料或取代 HTTP 操作
 export async function startApp(t, { line: lineOverrides = {}, devLogin = true, supportEmail } = {}) {
   const clock = { now: NOW };
   const pushes = [];
@@ -91,5 +92,5 @@ export async function startApp(t, { line: lineOverrides = {}, devLogin = true, s
     return c;
   };
 
-  return { clock, pushes, client, user, origin };
+  return { clock, pushes, client, user, origin, service: app.service };
 }

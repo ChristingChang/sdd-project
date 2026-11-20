@@ -9,7 +9,10 @@ CREATE TABLE IF NOT EXISTS users (
   display_name TEXT NOT NULL,
   picture_url TEXT,
   contact TEXT,
-  created_at INTEGER NOT NULL
+  created_at INTEGER NOT NULL,
+  -- 最近一次 LINE 登入時同意的條款版本與時間（PR-LEGAL-05），再登入會覆寫
+  terms_version TEXT,
+  terms_accepted_at INTEGER
 );
 CREATE TABLE IF NOT EXISTS sessions (
   token_hash TEXT PRIMARY KEY,
@@ -62,6 +65,13 @@ export function openDb(path = ':memory:') {
 function migrate(db) {
   const columns = db.prepare('PRAGMA table_info(trips)').all().map((c) => c.name);
   if (!columns.includes('meeting_point')) db.exec('ALTER TABLE trips ADD COLUMN meeting_point TEXT');
+
+  // 同意條款紀錄（PR-LEGAL-05）。既有使用者留空，不需要補同意
+  const userColumns = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
+  if (!userColumns.includes('terms_version')) db.exec('ALTER TABLE users ADD COLUMN terms_version TEXT');
+  if (!userColumns.includes('terms_accepted_at')) {
+    db.exec('ALTER TABLE users ADD COLUMN terms_accepted_at INTEGER');
+  }
 
   // 烏石港與北堤是同一個浪點（2026-11-13 合併），舊行程統一改叫北堤
   const update = db.prepare('UPDATE trips SET spots = ? WHERE id = ?');
