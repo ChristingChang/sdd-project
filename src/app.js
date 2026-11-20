@@ -9,6 +9,7 @@ import {
   SPOTS,
   SPOT_LABELS,
 } from './service.js';
+import { LEGAL_UPDATED, LEGAL_VERSION, PRIVACY, TERMS } from './legal.js';
 import { shareText } from './share.js';
 
 const SESSION_DAYS = 30;
@@ -18,7 +19,7 @@ const ASSETS = {
   '/app.js': 'text/javascript; charset=utf-8',
   '/style.css': 'text/css; charset=utf-8',
 };
-const PAGES = [/^\/$/, /^\/new$/, /^\/me$/, /^\/trips\/\d+$/];
+const PAGES = [/^\/$/, /^\/new$/, /^\/me$/, /^\/trips\/\d+$/, /^\/privacy$/, /^\/terms$/];
 const SECURITY_HEADERS = {
   'x-content-type-options': 'nosniff',
   'referrer-policy': 'same-origin',
@@ -73,7 +74,7 @@ function readJson(req) {
   });
 }
 
-export function createApp({ db, line, baseUrl, devLogin = false, now = () => Date.now() }) {
+export function createApp({ db, line, baseUrl, devLogin = false, supportEmail, now = () => Date.now() }) {
   const service = createService(db, { now });
   const secure = baseUrl.startsWith('https://');
   const cookieFlags = `Path=/; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}`;
@@ -148,7 +149,11 @@ export function createApp({ db, line, baseUrl, devLogin = false, now = () => Dat
         boardRules: BOARD_RULES,
         boardTypes: BOARD_TYPES,
         boardAllowed: BOARD_ALLOWED,
+        supportEmail,
       });
+    }
+    if (method === 'GET' && path === '/api/legal') {
+      return send(res, 200, { version: LEGAL_VERSION, updatedAt: LEGAL_UPDATED, privacy: PRIVACY, terms: TERMS });
     }
     if (method === 'GET' && path === '/api/me') {
       return send(res, 200, { user: publicUser(user), devLogin });
