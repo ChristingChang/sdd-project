@@ -152,6 +152,19 @@ function loginHref() {
   return `/auth/line?next=${encodeURIComponent(location.pathname)}`;
 }
 
+// 隱私權說明與使用須知的連結，頁尾、登入按鈕、聯絡方式表單共用
+function legalLinks(separator = ' · ') {
+  return [link('/privacy', {}, '隱私權說明'), separator, link('/terms', {}, '使用須知')];
+}
+
+// LINE 登入按鈕一律附同意說明：按下去就是同意並登入，同意的版本與時間由伺服器記錄（PR-LEGAL-04、PR-LEGAL-05）
+function lineLoginButton() {
+  return [
+    h('a', { class: 'button block line-button', href: loginHref() }, '同意並以 LINE 登入'),
+    h('p', { class: 'consent-note' }, '點選即表示你已閱讀並同意 ', ...legalLinks(' 與 ')),
+  ];
+}
+
 function notice(text, kind = '') {
   return h('div', { class: `notice ${kind}`, role: kind === 'error' ? 'alert' : 'status' }, text);
 }
@@ -186,9 +199,8 @@ function renderNav() {
       h('span', { class: 'tab-post-mark' }, icon('plus')),
       h('span', {}, '發車'),
     ),
-    me
-      ? link('/me', { class: 'tab', 'aria-current': current('/me') }, icon('user'), h('span', {}, '我的'))
-      : h('a', { class: 'tab', href: loginHref() }, icon('user'), h('span', {}, '登入')),
+    // 未登入時也連到 /me 的「請先登入」頁，先看到同意說明，不直接跳 LINE 授權（PR-LEGAL-04）
+    link('/me', { class: 'tab', 'aria-current': current('/me') }, icon('user'), h('span', {}, me ? '我的' : '登入')),
   );
 }
 
@@ -425,7 +437,7 @@ function loginPrompt(message) {
   const children = [
     h('h1', {}, '請先登入'),
     h('p', {}, message),
-    h('a', { class: 'button block line-button', href: loginHref() }, '使用 LINE 登入'),
+    ...lineLoginButton(),
   ];
   if (devLogin) {
     const name = h('input', { value: '測試司機', 'aria-label': '測試用名稱' });
@@ -495,6 +507,7 @@ function contactForm(onDone) {
       h('span', { class: 'field-note' }, '只有在申請被接受後，才會顯示給同行程的司機或乘客'),
     ),
     h('button', { class: 'block' }, '儲存'),
+    h('p', { class: 'consent-note' }, ...legalLinks()),
   );
 }
 
@@ -820,7 +833,7 @@ function passengerPanel(trip) {
   if (trip.status !== 'open' || trip.departed) return [];
   if (trip.full) return [notice('這個行程已滿，無法申請')];
   if (!me) {
-    return [h('a', { class: 'button block line-button', href: loginHref() }, '使用 LINE 登入後申請')];
+    return lineLoginButton();
   }
   if (!me.contact) {
     return [h('h2', {}, '申請前先填聯絡方式'), contactForm(render)];
@@ -1036,7 +1049,7 @@ function legalFooter() {
   return h(
     'footer',
     { class: 'legal-footer' },
-    h('p', {}, link('/privacy', {}, '隱私權說明'), ' · ', link('/terms', {}, '使用須知')),
+    h('p', {}, ...legalLinks()),
     supportLine(),
   );
 }

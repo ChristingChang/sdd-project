@@ -269,6 +269,7 @@ export function createApp({ db, line, baseUrl, devLogin = false, supportEmail, n
         return redirect(res, '/?login=failed', [clearState]);
       }
       const user = service.upsertLineUser(profile);
+      service.acceptTerms(user, LEGAL_VERSION);
       return redirect(res, safeNext(decodeURIComponent(next ?? '')), [
         clearState,
         startSession(user.id),

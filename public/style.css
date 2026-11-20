@@ -738,6 +738,14 @@ button.danger:hover:not(:disabled) {
   background: #05b04b;
 }
 
+/* 登入按鈕與聯絡方式表單下方的同意說明（PR-LEGAL-04） */
+.consent-note {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+}
+
 .actions {
   display: flex;
   gap: 8px;

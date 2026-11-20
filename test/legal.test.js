@@ -96,3 +96,12 @@ test('PR-SUPPORT-01 開發環境沒設定客服信箱時，前端設定照常回
   assert.equal(status, 200);
   assert.equal(body.supportEmail, undefined);
 });
+
+test('PR-LEGAL-04 LINE 登入按鈕寫明同意，旁邊附隱私權說明與使用須知連結', async (t) => {
+  const { client } = await startApp(t);
+  const { text } = await client().get('/app.js');
+  assert.match(text, /同意並以 LINE 登入/);
+  assert.match(text, /點選即表示你已閱讀並同意/);
+  // 舊按鈕文字沒有說明同意，不能再留在任何地方
+  assert.doesNotMatch(text, /使用 LINE 登入/);
+});

@@ -297,7 +297,7 @@ await tc('TC-TRIP-05', '未登入用分享連結查看行程', async (ok) => {
   await guest.goto(`/trips/${trip1}`);
   const t = await guest.text();
   for (const s of ['北堤、雙獅', '05:00', '後山埤站、板橋新埔站', '共 2 位，剩 2 位', '僅短板', '單程 $150']) ok(t.includes(s), '看不到 ' + s);
-  ok(t.includes('使用 LINE 登入後申請'), '沒有「使用 LINE 登入後申請」');
+  ok(t.includes('同意並以 LINE 登入'), '沒有「同意並以 LINE 登入」');
   ok(!t.includes('akai-line') && !t.includes('1 號出口'), '訪客看到了聯絡方式或集合點');
 });
 
