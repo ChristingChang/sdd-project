@@ -17,7 +17,7 @@ export const validTrip = (overrides = {}) => ({
 });
 
 // 透過真實 HTTP 測試：這是專案的接縫，測試不碰內部函式
-export async function startApp(t, { line: lineOverrides = {}, devLogin = true } = {}) {
+export async function startApp(t, { line: lineOverrides = {}, devLogin = true, supportEmail } = {}) {
   const clock = { now: NOW };
   const pushes = [];
   const line = {
@@ -33,6 +33,7 @@ export async function startApp(t, { line: lineOverrides = {}, devLogin = true } 
     line,
     baseUrl: 'http://test.local',
     devLogin,
+    supportEmail,
     now: () => clock.now,
   });
   const server = createServer(app.handler);

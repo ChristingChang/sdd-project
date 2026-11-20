@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { createApp } from './app.js';
 import { openDb } from './db.js';
 import { createLineClient } from './line.js';
+import { startupError } from './startup.js';
 
 try {
   process.loadEnvFile();
@@ -14,11 +15,12 @@ const port = Number(env.PORT ?? 3000);
 const baseUrl = env.BASE_URL ?? `http://localhost:${port}`;
 const devLogin = env.DEV_LOGIN === '1';
 
-if (devLogin && (env.NODE_ENV === 'production' || baseUrl.startsWith('https://'))) {
-  // 假登入等於任何人都能冒充任何人，寧可起不來
-  console.error('DEV_LOGIN 不可用於正式環境');
+const refusal = startupError({ ...env, BASE_URL: baseUrl });
+if (refusal) {
+  console.error(refusal);
   process.exit(1);
 }
+const supportEmail = env.SUPPORT_EMAIL?.trim() || undefined;
 
 const line = createLineClient({
   channelId: env.LINE_LOGIN_CHANNEL_ID,
@@ -27,7 +29,7 @@ const line = createLineClient({
   baseUrl,
 });
 const db = openDb(env.DB_PATH ?? 'data/carpool.db');
-const { handler } = createApp({ db, line, baseUrl, devLogin });
+const { handler } = createApp({ db, line, baseUrl, devLogin, supportEmail });
 
 const server = createServer(handler);
 server.on('error', (error) => {

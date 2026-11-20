@@ -416,6 +416,7 @@ async function homePage() {
     strip,
     h('div', { class: 'list-head' }, summary, spot),
     list,
+    legalFooter(),
   );
   await load();
 }
@@ -1015,6 +1016,50 @@ async function mePage() {
       '登出',
     ),
     logoutSlot,
+    legalFooter(),
+  );
+}
+
+// 客服信箱：被放鳥、騷擾、刪除帳號都從這裡聯絡（PR-SUPPORT-01）。開發環境沒設定時不顯示
+function supportLine() {
+  if (!config?.supportEmail) return null;
+  return h(
+    'p',
+    { class: 'support' },
+    '被放鳥、遇到騷擾或想刪除帳號，請寫信到 ',
+    h('a', { href: `mailto:${config.supportEmail}` }, config.supportEmail),
+  );
+}
+
+// 首頁與「我的」頁底部的說明連結（PR-LEGAL-03）
+function legalFooter() {
+  return h(
+    'footer',
+    { class: 'legal-footer' },
+    h('p', {}, link('/privacy', {}, '隱私權說明'), ' · ', link('/terms', {}, '使用須知')),
+    supportLine(),
+  );
+}
+
+const LEGAL_TITLE = { privacy: '隱私權說明', terms: '使用須知' };
+
+// 隱私權說明與使用須知（PR-LEGAL-01、PR-LEGAL-02）。內容來自伺服器的 src/legal.js，前端只負責排版
+async function legalPage(kind) {
+  const legal = await api('/api/legal');
+  const other = kind === 'privacy' ? 'terms' : 'privacy';
+  mount(
+    h('h1', {}, LEGAL_TITLE[kind]),
+    h('p', { class: 'legal-meta' }, `最後更新：${legal.updatedAt}（版本 ${legal.version}）`),
+    legal[kind].map((section) =>
+      h(
+        'section',
+        { class: 'legal-section' },
+        h('h2', {}, section.title),
+        h('ul', {}, section.items.map((item) => h('li', {}, item))),
+      ),
+    ),
+    supportLine(),
+    h('p', { class: 'legal-meta' }, link(`/${other}`, {}, `看${LEGAL_TITLE[other]}`)),
   );
 }
 
@@ -1032,6 +1077,7 @@ async function render() {
     if (tripMatch) await tripPage(tripMatch[1]);
     else if (path === '/new') newTripPage();
     else if (path === '/me') await mePage();
+    else if (path === '/privacy' || path === '/terms') await legalPage(path.slice(1));
     else await homePage();
   } catch (error) {
     // 登入過期時 api() 已經重畫成登入畫面，這裡不能再蓋掉它

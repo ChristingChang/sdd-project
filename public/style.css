@@ -826,3 +826,37 @@ button.danger:hover:not(:disabled) {
   outline: 3px solid var(--ocean-dark);
   outline-offset: 2px;
 }
+
+/* 隱私權說明、使用須知與底部說明連結（PR-LEGAL-01～03） */
+.legal-footer {
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+}
+
+.legal-footer p {
+  margin: 4px 0;
+}
+
+.support {
+  color: var(--muted);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.legal-meta {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.legal-section ul {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+.legal-section li {
+  margin-bottom: 6px;
+}
