@@ -33,6 +33,7 @@ const NOTE = {
   'TC-REQ-12b': '補充：小浪以短板申請 T3 成功（TC-REQ-12 的「申請成功」部分）。',
   'TC-CONTACT-02b': '補充：小新填好聯絡方式後出現申請表單（TC-CONTACT-02 的後半）。',
   'TC-CONTACT-06b': '補充：TC-CONTACT-06 的步驟 3，合法手機號碼儲存後出現申請表單。',
+  'TC-FRIEND-02b': '補充：TC-FRIEND-02 的步驟 2，重新整理後提醒消失。',
 };
 const NO_SHOT = new Set(['TC-METRIC-01', 'TC-METRIC-02']);
 

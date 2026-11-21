@@ -53,6 +53,12 @@
    fly secrets set SUPPORT_EMAIL=你的客服信箱
    ```
 
+   官方帳號的 Basic ID（含開頭的 `@`，在 LINE Official Account Manager 的帳號設定裡看得到）用來產生「加好友」按鈕。沒設定時網站只顯示文字提醒、沒有按鈕，伺服器照常啟動（PR-FRIEND-01）：
+
+   ```bash
+   fly secrets set LINE_OA_BASIC_ID=@你的官方帳號ID
+   ```
+
 6. **部署**：
 
    ```bash

@@ -29,7 +29,14 @@ const line = createLineClient({
   baseUrl,
 });
 const db = openDb(env.DB_PATH ?? 'data/carpool.db');
-const { handler } = createApp({ db, line, baseUrl, devLogin, supportEmail });
+const { handler } = createApp({
+  db,
+  line,
+  baseUrl,
+  devLogin,
+  supportEmail,
+  lineOaBasicId: env.LINE_OA_BASIC_ID,
+});
 
 const server = createServer(handler);
 server.on('error', (error) => {

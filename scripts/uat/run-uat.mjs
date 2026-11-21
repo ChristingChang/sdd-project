@@ -27,14 +27,17 @@ const D1 = twDate(1), D2 = twDate(2), D3 = twDate(3);
 let server = null;
 let serverLog = [];
 let dbPath = '';
-async function startServer(name) {
+// 測試用的官方帳號 ID（PR-FRIEND-01）。oaId 傳空白字串代表「沒設定」：
+// Windows 不保留值為空字串的環境變數，傳 '' 會被丟掉、改讀 .env，所以用空白（伺服器會 trim 成沒設定）
+const UAT_OA_ID = '@uattest';
+async function startServer(name, { oaId = UAT_OA_ID } = {}) {
   if (server) { server.kill(); await new Promise((r) => server.once('exit', r)); }
   dbPath = join(WORK, `${name}.db`).replaceAll('\\', '/');
   for (const ext of ['', '-wal', '-shm']) rmSync(dbPath + ext, { force: true });
   serverLog = [];
   server = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', 'src/server.js'], {
     cwd: PROJECT,
-    env: { ...process.env, PORT: String(PORT), BASE_URL: BASE, DB_PATH: dbPath, DEV_LOGIN: '1', LINE_MESSAGING_ACCESS_TOKEN: '' },
+    env: { ...process.env, PORT: String(PORT), BASE_URL: BASE, DB_PATH: dbPath, DEV_LOGIN: '1', LINE_MESSAGING_ACCESS_TOKEN: '', LINE_OA_BASIC_ID: oaId || ' ' },
   });
   const onData = (d) => serverLog.push(...d.toString().split(/\r?\n/).filter(Boolean));
   server.stdout.on('data', onData);
@@ -348,6 +351,34 @@ await tc('TC-TRIP-10', '上一趟已取消仍會帶入', async (ok) => {
   ok(v.date === '', '日期不是空的');
 });
 
+// PR-FRIEND-01：讀畫面上的加好友提醒（沒有時回 null）
+const FRIEND_TEXT = '記得加浪乘官方帳號好友，才收得到申請和接受通知';
+const FRIEND_URL = `https://line.me/R/ti/p/${encodeURIComponent(UAT_OA_ID)}`;
+const friendState = (p) =>
+  p.eval(`const n = $$('.friend-reminder')[0]; return n ? { text: n.querySelector('p').textContent, href: n.querySelector('a')?.getAttribute('href') ?? null, button: n.querySelector('a')?.textContent ?? null } : null;`);
+
+let friendTrip;
+await tc('TC-FRIEND-02', '發布行程成功後提醒加好友', async (ok) => {
+  friendTrip = await publish(akai, STD);
+  const f = await friendState(akai);
+  ok(f?.text === FRIEND_TEXT, '發布後沒有加好友提醒：' + JSON.stringify(f));
+  ok(f?.button === '加好友' && f?.href === FRIEND_URL, '加好友按鈕不對：' + JSON.stringify(f));
+});
+
+await tc('TC-FRIEND-02b', '（接續）重新整理後提醒消失，只出現一次', async (ok) => {
+  await akai.goto(`/trips/${friendTrip}`);
+  ok((await friendState(akai)) === null, '重新整理後提醒還在');
+});
+
+await tc('TC-FRIEND-01', '「我的」頁上方提醒加官方帳號好友', async (ok) => {
+  await akai.goto('/me');
+  const f = await friendState(akai);
+  ok(f?.text === FRIEND_TEXT, '「我的」頁沒有加好友提醒：' + JSON.stringify(f));
+  ok(f?.button === '加好友' && f?.href === FRIEND_URL, '加好友按鈕不對：' + JSON.stringify(f));
+  const order = await akai.eval(`const v = view(); const kids = [...v.children]; return kids.indexOf(v.querySelector('.friend-reminder')) - kids.indexOf(v.querySelector('h1'));`);
+  ok(order === 1, '提醒不是緊接在標題下方');
+});
+
 // =====================================================================
 // 場景 2：找車（FIND-01～06、08）
 // =====================================================================
@@ -430,9 +461,15 @@ await tc('TC-FIND-06', '選沒有車的浪點', async (ok) => {
 // 場景 3：明天沒車（FIND-09）
 // =====================================================================
 console.log('\n=== 場景 3：明天沒車 ===');
-await startServer('s3');
+await startServer('s3', { oaId: '' });
 await login(akai, '阿凱', 'akai-line');
 await publish(akai, { ...STD, date: D2 });
+await tc('TC-FRIEND-04', '沒設定官方帳號 ID 時只有文字提醒', async (ok) => {
+  await akai.goto('/me');
+  const f = await friendState(akai);
+  ok(f?.text === FRIEND_TEXT, '沒有加好友提醒文字：' + JSON.stringify(f));
+  ok(f?.button === null, '沒設定官方帳號卻出現按鈕：' + JSON.stringify(f));
+});
 await tc('TC-FIND-09', '明天沒有行程時提示並提供切換', async (ok) => {
   await guest.goto('/');
   ok((await guest.text()).includes('明天目前沒有行程'), '沒有「明天目前沒有行程」');
@@ -477,6 +514,14 @@ await tc('TC-REQ-01', '乘客申請行程', async (ok) => {
   const t = await yu.text();
   ok(t.includes('上車：後山埤站｜短板'), '卡片沒有「上車：後山埤站｜短板」');
   ok(t.includes('待確認'), '沒有「待確認」');
+});
+
+// 接在 TC-REQ-01 之後：小魚的畫面還停在剛送出申請的行程頁
+await tc('TC-FRIEND-03', '送出申請成功後提醒加好友', async (ok) => {
+  const f = await friendState(yu);
+  ok(f?.text === FRIEND_TEXT, '送出申請後沒有加好友提醒：' + JSON.stringify(f));
+  ok(f?.button === '加好友' && f?.href === FRIEND_URL, '加好友按鈕不對：' + JSON.stringify(f));
+  ok((await yu.text()).includes('我的申請'), '沒有出現申請卡');
 });
 
 await tc('TC-REQ-11', '不能重複申請同一行程', async (ok) => {

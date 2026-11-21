@@ -74,8 +74,19 @@ function readJson(req) {
   });
 }
 
-export function createApp({ db, line, baseUrl, devLogin = false, supportEmail, now = () => Date.now() }) {
+export function createApp({
+  db,
+  line,
+  baseUrl,
+  devLogin = false,
+  supportEmail,
+  lineOaBasicId,
+  now = () => Date.now(),
+}) {
   const service = createService(db, { now });
+  // PR-FRIEND-01：官方帳號加好友網址。@ 編碼成 %40 是 LINE 文件的寫法；沒設定時前端只顯示文字提醒
+  const oaId = lineOaBasicId?.trim();
+  const addFriendUrl = oaId ? `https://line.me/R/ti/p/${encodeURIComponent(oaId)}` : undefined;
   const secure = baseUrl.startsWith('https://');
   const cookieFlags = `Path=/; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}`;
   const tripUrl = (trip) => `${baseUrl}/trips/${trip.id}`;
@@ -150,6 +161,7 @@ export function createApp({ db, line, baseUrl, devLogin = false, supportEmail, n
         boardTypes: BOARD_TYPES,
         boardAllowed: BOARD_ALLOWED,
         supportEmail,
+        addFriendUrl,
       });
     }
     if (method === 'GET' && path === '/api/legal') {
