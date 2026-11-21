@@ -24,6 +24,8 @@ let devLogin = false;
 let config = null;
 // 重新整理畫面後要顯示在頁首的一次性訊息（例如「行程已滿」），下一次 mount 時取用並清掉
 let flash = null;
+// 剛發布行程或送出申請：下一次打開行程頁時顯示加好友提醒（PR-FRIEND-01），顯示一次就清掉
+let friendNudge = false;
 
 // replaceChildren 會把陣列和 null 印成文字，所以畫面一律經過這裡攤平
 function mount(...children) {
@@ -552,6 +554,7 @@ async function newTripPage() {
               meetingPoint: data.get('meetingPoint'),
             },
           });
+          friendNudge = true;
           go(`/trips/${trip.id}`);
         } catch (error) {
           button.disabled = false;
@@ -751,6 +754,7 @@ function applyForm(trip) {
             method: 'POST',
             body: { pickup: data.get('pickup'), boardType: data.get('boardType') },
           });
+          friendNudge = true;
           render();
         } catch (error) {
           button.disabled = false;
@@ -893,6 +897,8 @@ async function tripPage(id) {
     icon('back'),
     navigatedInApp ? '返回' : '看更多行程',
   );
+  const nudge = friendNudge && me ? friendReminder() : null;
+  friendNudge = false;
   mount(
     back,
     h(
@@ -901,6 +907,7 @@ async function tripPage(id) {
       spotTile(trip.spots, 'spot-tile spot-tile-lg'),
       h('div', { class: 'trip-hero-text' }, h('h1', {}, `${formatDate(trip.date)} ${trip.time}`), tripBadge(trip)),
     ),
+    nudge,
     h(
       'div',
       { class: 'card' },
@@ -1005,6 +1012,7 @@ async function mePage() {
   const logoutSlot = h('div');
   mount(
     h('h1', {}, `${me.name} 的共乘`),
+    friendReminder(),
     h('h2', {}, '接下來'),
     upcoming.length
       ? h('div', { class: 'rows' }, upcoming.map(activityCard))
@@ -1030,6 +1038,17 @@ async function mePage() {
     ),
     logoutSlot,
     legalFooter(),
+  );
+}
+
+// 加官方帳號好友提醒（PR-FRIEND-01）：沒加好友就收不到任何推播，而且系統偵測不到，所以對所有登入者一律顯示。
+// 有設定官方帳號 ID 才附「加好友」按鈕；文案不能保證通知必達（docs/user-stories.md 不要說的話）
+function friendReminder() {
+  return h(
+    'div',
+    { class: 'notice friend-reminder', role: 'status' },
+    h('p', {}, '記得加浪乘官方帳號好友，才收得到申請和接受通知'),
+    config?.addFriendUrl ? h('a', { class: 'button line-button', href: config.addFriendUrl }, '加好友') : null,
   );
 }
 
