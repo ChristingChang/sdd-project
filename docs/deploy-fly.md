@@ -89,6 +89,7 @@ fly deploy --ha=false
 | 看即時 log（推播失敗的訊息在這裡） | `fly logs` |
 | 看機器狀態 | `fly status` |
 | 每週成行趟數 | `fly ssh console -C "node --disable-warning=ExperimentalWarning src/stats.js"` |
+| 刪除帳號、查使用者編號 | `fly ssh console` 進去後執行，步驟見 `docs/support-sop.md` 第五節 |
 | 看 volume 快照 | `fly volumes snapshots list <volume id>`（id 用 `fly volumes list` 查） |
 
 機器閒置時會自動關機。`fly ssh console` 前若顯示沒有在跑的機器，先打開網站把它叫醒。

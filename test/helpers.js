@@ -93,5 +93,6 @@ export async function startApp(t, { line: lineOverrides = {}, devLogin = true, s
     return c;
   };
 
-  return { clock, pushes, client, user, origin, service: app.service };
+  // notifier 給管理員指令（刪除帳號）用，推播一樣進 pushes
+  return { clock, pushes, client, user, origin, service: app.service, notifier: app.notifier };
 }

@@ -10,6 +10,7 @@ import {
   SPOT_LABELS,
 } from './service.js';
 import { LEGAL_UPDATED, LEGAL_VERSION, PRIVACY, TERMS } from './legal.js';
+import { createNotifier } from './notify.js';
 import { shareText } from './share.js';
 
 const SESSION_DAYS = 30;
@@ -89,17 +90,9 @@ export function createApp({
   const addFriendUrl = oaId ? `https://line.me/R/ti/p/${encodeURIComponent(oaId)}` : undefined;
   const secure = baseUrl.startsWith('https://');
   const cookieFlags = `Path=/; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}`;
-  const tripUrl = (trip) => `${baseUrl}/trips/${trip.id}`;
-  const tripLabel = (trip) => `${trip.date} ${trip.time}`;
-
-  // 推播失敗不能讓使用者的操作失敗，資料已經寫入了
-  const notify = async (user, text) => {
-    try {
-      await line.push(user.line_user_id, text);
-    } catch (error) {
-      console.error('推播失敗', error.message);
-    }
-  };
+  // 推播文字與失敗處理都在 notify.js，和管理員指令共用
+  const notifier = createNotifier(line, baseUrl);
+  const { tripUrl } = notifier;
 
   const send = (res, status, body, headers = {}) => {
     res.writeHead(status, {
@@ -204,11 +197,7 @@ export function createApp({
     if (method === 'POST' && (match = path.match(/^\/api\/trips\/(\d+)\/cancel$/))) {
       await readJson(req);
       const { trip, passengers } = service.cancelTrip(requireUser(user), Number(match[1]));
-      await Promise.all(
-        passengers.map((p) =>
-          notify(p, `你申請的 ${tripLabel(trip)} 行程已被司機取消\n${tripUrl(trip)}`),
-        ),
-      );
+      await notifier.tripCancelled(passengers, trip);
       return send(res, 200, {});
     }
     if (method === 'POST' && (match = path.match(/^\/api\/trips\/(\d+)\/requests$/))) {
@@ -218,10 +207,7 @@ export function createApp({
         Number(match[1]),
         body,
       );
-      await notify(
-        driver,
-        `${user.display_name} 申請了你 ${tripLabel(trip)} 的行程\n${tripUrl(trip)}`,
-      );
+      await notifier.applied(driver, user.display_name, trip);
       return send(res, 201, { requestId: request.id });
     }
     if (method === 'POST' && (match = path.match(/^\/api\/requests\/(\d+)\/(accept|reject)$/))) {
@@ -232,21 +218,13 @@ export function createApp({
         Number(match[1]),
         accepted ? 'accepted' : 'rejected',
       );
-      const result = accepted ? '已被接受，可以查看司機聯絡方式' : '未被接受';
-      // 集合點只放進接受通知，被拒絕的乘客不該知道
-      const meet = accepted && trip.meeting_point ? `\n集合點：${trip.meeting_point}` : '';
-      await notify(passenger, `你申請的 ${tripLabel(trip)} 行程${result}${meet}\n${tripUrl(trip)}`);
+      await notifier.decided(passenger, trip, accepted);
       return send(res, 200, {});
     }
     if (method === 'POST' && (match = path.match(/^\/api\/requests\/(\d+)\/withdraw$/))) {
       await readJson(req);
       const { trip, driver, wasAccepted } = service.withdraw(requireUser(user), Number(match[1]));
-      if (wasAccepted) {
-        await notify(
-          driver,
-          `${user.display_name} 退出了你 ${tripLabel(trip)} 的行程，座位已釋出\n${tripUrl(trip)}`,
-        );
-      }
+      if (wasAccepted) await notifier.withdrawn(driver, user.display_name, trip);
       return send(res, 200, {});
     }
     throw new DomainError(404, 'not_found', '找不到資料');
@@ -336,5 +314,5 @@ export function createApp({
     }
   };
 
-  return { handler, service };
+  return { handler, service, notifier };
 }

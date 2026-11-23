@@ -8,6 +8,7 @@
     "start": "node --disable-warning=ExperimentalWarning src/server.js",
     "test": "node --disable-warning=ExperimentalWarning --test \"test/*.test.js\"",
     "stats": "node --disable-warning=ExperimentalWarning src/stats.js",
+    "delete-user": "node --disable-warning=ExperimentalWarning src/delete-user.js",
     "uat": "node scripts/uat/run-uat.mjs"
   }
 }
