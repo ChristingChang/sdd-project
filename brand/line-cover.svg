@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200">
+  <title>浪乘 LINE 背景</title>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f7f3ea"/>
+      <stop offset="0.55" stop-color="#fbe3c4"/>
+      <stop offset="1" stop-color="#f6c48f"/>
+    </linearGradient>
+    <linearGradient id="sea" x1="0" y1="0.35" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b6e8a"/>
+      <stop offset="1" stop-color="#084f63"/>
+    </linearGradient>
+    <linearGradient id="foam" gradientUnits="userSpaceOnUse" x1="915" y1="0" x2="1240" y2="0"><stop offset="0" stop-color="#fff"/><stop offset="0.6" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  </defs>
+  <rect width="1600" height="1200" fill="url(#sky)"/>
+  <!-- 日出：和 Logo 一樣，一部分藏在浪頂後面 -->
+  <circle cx="1185" cy="425" r="150" fill="#f29e4c"/>
+  <!-- 遠方的海 -->
+  <path d="M0 600 C200 570 360 630 560 600 C760 570 900 630 1100 600 C1300 570 1450 625 1600 600 V1200 H0 Z" fill="#3a93a8"/>
+  <!-- 前景的海：在右邊捲成一道浪，形狀取自 Logo 的「路捲成浪」 -->
+  <path d="M0 770 C200 750 380 790 560 770 C700 755 800 760 880 740 C960 720 1000 660 990 600 C985 560 960 540 935 548 C915 555 905 575 915 595 C890 560 905 480 990 455 C1080 430 1170 450 1240 520 C1310 590 1400 700 1600 720 V1200 H0 Z" fill="url(#sea)"/>
+  <!-- 浪花：沿著浪唇到浪頂 -->
+  <path d="M915 595 C890 560 905 480 990 455 C1080 430 1170 450 1240 520" fill="none" stroke="url(#foam)" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="900" cy="560" r="6" fill="#ffffff" opacity="0.8"/>
+  <circle cx="885" cy="590" r="4" fill="#ffffff" opacity="0.6"/>
+  <!-- 海面紋路 -->
+  <path d="M0 900 C260 870 420 930 680 900 C940 870 1100 930 1360 900 C1480 886 1560 904 1600 900" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="8" stroke-linecap="round"/>
+  <path d="M0 1010 C260 980 420 1040 680 1010 C940 980 1100 1040 1360 1010 C1480 996 1560 1014 1600 1010" fill="none" stroke="#ffffff" stroke-opacity="0.1" stroke-width="8" stroke-linecap="round"/>
+  <text x="120" y="220" font-family="system-ui,-apple-system,'PingFang TC','Noto Sans TC','Microsoft JhengHei',sans-serif" font-size="64" font-weight="800" fill="#1d2b30" letter-spacing="4">台北 → 宜蘭</text>
+  <text x="120" y="300" font-family="system-ui,-apple-system,'PingFang TC','Noto Sans TC','Microsoft JhengHei',sans-serif" font-size="44" font-weight="600" fill="#084f63" letter-spacing="6">衝浪共乘</text>
+</svg>

@@ -24,6 +24,8 @@ let devLogin = false;
 let config = null;
 // 重新整理畫面後要顯示在頁首的一次性訊息（例如「行程已滿」），下一次 mount 時取用並清掉
 let flash = null;
+// 剛發布行程或送出申請：下一次打開行程頁時顯示加好友提醒（PR-FRIEND-01），顯示一次就清掉
+let friendNudge = false;
 
 // replaceChildren 會把陣列和 null 印成文字，所以畫面一律經過這裡攤平
 function mount(...children) {
@@ -152,6 +154,19 @@ function loginHref() {
   return `/auth/line?next=${encodeURIComponent(location.pathname)}`;
 }
 
+// 隱私權說明與使用須知的連結，頁尾、登入按鈕、聯絡方式表單共用
+function legalLinks(separator = ' · ') {
+  return [link('/privacy', {}, '隱私權說明'), separator, link('/terms', {}, '使用須知')];
+}
+
+// LINE 登入按鈕一律附同意說明：按下去就是同意並登入，同意的版本與時間由伺服器記錄（PR-LEGAL-04、PR-LEGAL-05）
+function lineLoginButton() {
+  return [
+    h('a', { class: 'button block line-button', href: loginHref() }, '同意並以 LINE 登入'),
+    h('p', { class: 'consent-note' }, '點選即表示你已閱讀並同意 ', ...legalLinks(' 與 ')),
+  ];
+}
+
 function notice(text, kind = '') {
   return h('div', { class: `notice ${kind}`, role: kind === 'error' ? 'alert' : 'status' }, text);
 }
@@ -186,9 +201,8 @@ function renderNav() {
       h('span', { class: 'tab-post-mark' }, icon('plus')),
       h('span', {}, '發車'),
     ),
-    me
-      ? link('/me', { class: 'tab', 'aria-current': current('/me') }, icon('user'), h('span', {}, '我的'))
-      : h('a', { class: 'tab', href: loginHref() }, icon('user'), h('span', {}, '登入')),
+    // 未登入時也連到 /me 的「請先登入」頁，先看到同意說明，不直接跳 LINE 授權（PR-LEGAL-04）
+    link('/me', { class: 'tab', 'aria-current': current('/me') }, icon('user'), h('span', {}, me ? '我的' : '登入')),
   );
 }
 
@@ -416,6 +430,7 @@ async function homePage() {
     strip,
     h('div', { class: 'list-head' }, summary, spot),
     list,
+    legalFooter(),
   );
   await load();
 }
@@ -424,7 +439,7 @@ function loginPrompt(message) {
   const children = [
     h('h1', {}, '請先登入'),
     h('p', {}, message),
-    h('a', { class: 'button block line-button', href: loginHref() }, '使用 LINE 登入'),
+    ...lineLoginButton(),
   ];
   if (devLogin) {
     const name = h('input', { value: '測試司機', 'aria-label': '測試用名稱' });
@@ -494,6 +509,7 @@ function contactForm(onDone) {
       h('span', { class: 'field-note' }, '只有在申請被接受後，才會顯示給同行程的司機或乘客'),
     ),
     h('button', { class: 'block' }, '儲存'),
+    h('p', { class: 'consent-note' }, ...legalLinks()),
   );
 }
 
@@ -538,6 +554,7 @@ async function newTripPage() {
               meetingPoint: data.get('meetingPoint'),
             },
           });
+          friendNudge = true;
           go(`/trips/${trip.id}`);
         } catch (error) {
           button.disabled = false;
@@ -606,7 +623,7 @@ async function newTripPage() {
         'fareOneWay',
         '單程車資（元）',
         h('input', { type: 'number', name: 'fareOneWay', min: 0, inputmode: 'numeric' }),
-        '車資僅限分攤油資與過路費，不得營利載客',
+        '共乘車資以分攤油資與過路費為原則，請勿以載客營利為業',
       ),
       field(
         'fareRoundTrip',
@@ -737,6 +754,7 @@ function applyForm(trip) {
             method: 'POST',
             body: { pickup: data.get('pickup'), boardType: data.get('boardType') },
           });
+          friendNudge = true;
           render();
         } catch (error) {
           button.disabled = false;
@@ -819,7 +837,7 @@ function passengerPanel(trip) {
   if (trip.status !== 'open' || trip.departed) return [];
   if (trip.full) return [notice('這個行程已滿，無法申請')];
   if (!me) {
-    return [h('a', { class: 'button block line-button', href: loginHref() }, '使用 LINE 登入後申請')];
+    return lineLoginButton();
   }
   if (!me.contact) {
     return [h('h2', {}, '申請前先填聯絡方式'), contactForm(render)];
@@ -879,6 +897,8 @@ async function tripPage(id) {
     icon('back'),
     navigatedInApp ? '返回' : '看更多行程',
   );
+  const nudge = friendNudge && me ? friendReminder() : null;
+  friendNudge = false;
   mount(
     back,
     h(
@@ -887,6 +907,7 @@ async function tripPage(id) {
       spotTile(trip.spots, 'spot-tile spot-tile-lg'),
       h('div', { class: 'trip-hero-text' }, h('h1', {}, `${formatDate(trip.date)} ${trip.time}`), tripBadge(trip)),
     ),
+    nudge,
     h(
       'div',
       { class: 'card' },
@@ -991,6 +1012,7 @@ async function mePage() {
   const logoutSlot = h('div');
   mount(
     h('h1', {}, `${me.name} 的共乘`),
+    friendReminder(),
     h('h2', {}, '接下來'),
     upcoming.length
       ? h('div', { class: 'rows' }, upcoming.map(activityCard))
@@ -1015,6 +1037,61 @@ async function mePage() {
       '登出',
     ),
     logoutSlot,
+    legalFooter(),
+  );
+}
+
+// 加官方帳號好友提醒（PR-FRIEND-01）：沒加好友就收不到任何推播，而且系統偵測不到，所以對所有登入者一律顯示。
+// 有設定官方帳號 ID 才附「加好友」按鈕；文案不能保證通知必達（docs/user-stories.md 不要說的話）
+function friendReminder() {
+  return h(
+    'div',
+    { class: 'notice friend-reminder', role: 'status' },
+    h('p', {}, '記得加浪乘官方帳號好友，才收得到申請和接受通知'),
+    config?.addFriendUrl ? h('a', { class: 'button line-button', href: config.addFriendUrl }, '加好友') : null,
+  );
+}
+
+// 客服信箱：被放鳥、騷擾、刪除帳號都從這裡聯絡（PR-SUPPORT-01）。開發環境沒設定時不顯示
+function supportLine() {
+  if (!config?.supportEmail) return null;
+  return h(
+    'p',
+    { class: 'support' },
+    '被放鳥、遇到騷擾或想刪除帳號，請寫信到 ',
+    h('a', { href: `mailto:${config.supportEmail}` }, config.supportEmail),
+  );
+}
+
+// 首頁與「我的」頁底部的說明連結（PR-LEGAL-03）
+function legalFooter() {
+  return h(
+    'footer',
+    { class: 'legal-footer' },
+    h('p', {}, ...legalLinks()),
+    supportLine(),
+  );
+}
+
+const LEGAL_TITLE = { privacy: '隱私權說明', terms: '使用須知' };
+
+// 隱私權說明與使用須知（PR-LEGAL-01、PR-LEGAL-02）。內容來自伺服器的 src/legal.js，前端只負責排版
+async function legalPage(kind) {
+  const legal = await api('/api/legal');
+  const other = kind === 'privacy' ? 'terms' : 'privacy';
+  mount(
+    h('h1', {}, LEGAL_TITLE[kind]),
+    h('p', { class: 'legal-meta' }, `最後更新：${legal.updatedAt}（版本 ${legal.version}）`),
+    legal[kind].map((section) =>
+      h(
+        'section',
+        { class: 'legal-section' },
+        h('h2', {}, section.title),
+        h('ul', {}, section.items.map((item) => h('li', {}, item))),
+      ),
+    ),
+    supportLine(),
+    h('p', { class: 'legal-meta' }, link(`/${other}`, {}, `看${LEGAL_TITLE[other]}`)),
   );
 }
 
@@ -1032,6 +1109,7 @@ async function render() {
     if (tripMatch) await tripPage(tripMatch[1]);
     else if (path === '/new') newTripPage();
     else if (path === '/me') await mePage();
+    else if (path === '/privacy' || path === '/terms') await legalPage(path.slice(1));
     else await homePage();
   } catch (error) {
     // 登入過期時 api() 已經重畫成登入畫面，這裡不能再蓋掉它
