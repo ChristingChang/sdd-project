@@ -56,6 +56,18 @@
 
    **不要**設定 `DEV_LOGIN`。正式環境開了伺服器會拒絕啟動。
 
+   另外設定客服信箱。它會公開顯示在網站上，不是秘密，但和其他設定一樣不寫進 repo；沒設定時正式環境會拒絕啟動（PR-SUPPORT-01）：
+
+   ```bash
+   fly secrets set SUPPORT_EMAIL=你的客服信箱
+   ```
+
+   官方帳號的 Basic ID（含開頭的 `@`，在 LINE Official Account Manager 的帳號設定裡看得到）用來產生「加好友」按鈕。沒設定時網站只顯示文字提醒、沒有按鈕，伺服器照常啟動（PR-FRIEND-01）：
+
+   ```bash
+   fly secrets set LINE_OA_BASIC_ID=@你的官方帳號ID
+   ```
+
 6. **部署**：
 
    ```bash
@@ -86,6 +98,7 @@ fly deploy --ha=false
 | 看即時 log（推播失敗的訊息在這裡） | `fly logs` |
 | 看機器狀態 | `fly status` |
 | 每週成行趟數 | `fly ssh console -C "node --disable-warning=ExperimentalWarning src/stats.js"` |
+| 刪除帳號、查使用者編號 | `fly ssh console` 進去後執行，步驟見 `docs/support-sop.md` 第五節 |
 | 看 volume 快照 | `fly volumes snapshots list <volume id>`（id 用 `fly volumes list` 查） |
 
 機器閒置時會自動關機。`fly ssh console` 前若顯示沒有在跑的機器，先打開網站把它叫醒。

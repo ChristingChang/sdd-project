@@ -192,7 +192,7 @@ components:
 - **警示紅** (`danger` / `danger-tint`)：已滿、已拒絕、已取消、錯誤訊息、危險按鈕（取消行程、退出）。
 
 ### Brand-owned
-- **LINE 綠** (`line-green`)：只用在「使用 LINE 登入」按鈕，依 LINE 的品牌規範。
+- **LINE 綠** (`line-green`)：只用在「同意並以 LINE 登入」按鈕，依 LINE 的品牌規範。
 
 ### Named Rules
 **The One Accent Rule.** 海藍是唯一的動作色。綠、黃、紅只出現在狀態標籤和錯誤提示，從不拿來做按鈕或裝飾。
