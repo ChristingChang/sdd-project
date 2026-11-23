@@ -68,7 +68,7 @@ test('PR-TRIP-03 未登入可用分享連結查看行程，頁面路徑可開啟
 test('PR-TRIP-04 發行程頁包含僅分攤油資的提示', async (t) => {
   const { client } = await startApp(t);
   const res = await client().get('/app.js');
-  assert.match(res.text, /車資僅限分攤油資與過路費/);
+  assert.match(res.text, /以分攤油資與過路費為原則/);
 });
 
 test('PR-FIND-01 只列未出發且未取消的行程，由近到遠排序', async (t) => {
