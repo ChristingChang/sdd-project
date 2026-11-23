@@ -26,6 +26,10 @@ export class DomainError extends Error {
 }
 
 const notFound = () => new DomainError(404, 'not_found', '找不到資料');
+
+// 刪除帳號（PR-ACCOUNT-01）：line_user_id 是 NOT NULL UNIQUE，改成 deleted:<編號>，每人唯一且對應不回原本的 LINE 帳號
+const DELETED_PREFIX = 'deleted:';
+export const DELETED_NAME = '已刪除的使用者';
 const forbidden = () => new DomainError(403, 'forbidden', '沒有權限');
 
 const isTime = (v) => typeof v === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
@@ -85,6 +89,46 @@ export function createService(db, { now = () => Date.now() } = {}) {
   const assertOpen = (trip) => {
     if (trip.status !== 'open') throw new DomainError(409, 'cancelled', '行程已取消');
     if (trip.depart_ts <= now()) throw new DomainError(409, 'departed', '行程已出發');
+  };
+
+  // PR-ACCOUNT-01～03：刪除帳號會影響到的行程與申請。預覽與實際刪除共用這一份，預覽說的就是實際會做的
+  const deletionPlan = (userId) => {
+    const user = getUser(userId);
+    if (!user) throw new DomainError(404, 'not_found', `找不到編號 ${userId} 的使用者`);
+    if (user.line_user_id.startsWith(DELETED_PREFIX)) {
+      throw new DomainError(409, 'already_deleted', `編號 ${userId} 的使用者已經刪除過了`);
+    }
+    const at = now();
+    const riders = db.prepare(
+      `SELECT u.*, r.status AS request_status FROM requests r JOIN users u ON u.id = r.passenger_id
+       WHERE r.trip_id = ? AND r.status IN ('pending', 'accepted') ORDER BY r.id`,
+    );
+    // 他當司機、還沒出發且未取消的行程：全部取消
+    const trips = db
+      .prepare(`SELECT * FROM trips WHERE driver_id = ? AND status = 'open' AND depart_ts > ? ORDER BY depart_ts, id`)
+      .all(userId, at)
+      .map((trip) => {
+        const all = riders.all(trip.id);
+        return {
+          trip,
+          accepted: all.filter((r) => r.request_status === 'accepted'),
+          pending: all.filter((r) => r.request_status === 'pending'),
+        };
+      });
+    // 他當乘客、行程還沒出發且未取消的申請：全部退出。已出發的不動，已接受的要留著才算成行
+    const requests = db
+      .prepare(
+        `SELECT r.* FROM requests r JOIN trips t ON t.id = r.trip_id
+         WHERE r.passenger_id = ? AND r.status IN ('pending', 'accepted')
+           AND t.status = 'open' AND t.depart_ts > ?
+         ORDER BY t.depart_ts, r.id`,
+      )
+      .all(userId, at)
+      .map((request) => {
+        const trip = rawTrip(request.trip_id);
+        return { request, trip, driver: getUser(trip.driver_id) };
+      });
+    return { user, trips, requests };
   };
 
   // 公開欄位：這裡刻意不含任何聯絡方式
@@ -371,6 +415,47 @@ export function createService(db, { now = () => Date.now() } = {}) {
         .all(user.id)
         .map((r) => ({ id: r.id, status: r.status, trip: present(rawTrip(r.trip_id)) }));
       return { trips, requests };
+    },
+
+    deletionPlan,
+
+    // 管理員查使用者編號用：名稱或聯絡方式包含關鍵字，已刪除的不列
+    findUsers(keyword) {
+      const like = `%${String(keyword).trim()}%`;
+      return db
+        .prepare(
+          `SELECT id, display_name, contact FROM users
+           WHERE (display_name LIKE ? OR contact LIKE ?) AND line_user_id NOT LIKE ?
+           ORDER BY id LIMIT 20`,
+        )
+        .all(like, like, `${DELETED_PREFIX}%`);
+    },
+
+    // 刪除帳號（PR-ACCOUNT-01～03）：匿名化而不是整筆刪除，已出發的行程要留著，成行統計才不會變少。
+    // 包在一個交易裡，中途失敗全部還原。回傳執行前的計畫，呼叫端據此發推播（名稱用刪除前的）
+    deleteUser(userId) {
+      const plan = deletionPlan(userId);
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        const cancel = db.prepare(`UPDATE trips SET status = 'cancelled' WHERE id = ?`);
+        for (const { trip } of plan.trips) cancel.run(trip.id);
+        const withdraw = db.prepare(`UPDATE requests SET status = 'withdrawn' WHERE id = ?`);
+        for (const { request } of plan.requests) withdraw.run(request.id);
+        // PR-ACCOUNT-03：清除可能認出本人的細節。他當司機的所有行程只留日期、浪點、座位與狀態；他所有申請清掉上車點
+        db.prepare(`UPDATE trips SET pickups = '[]', meeting_point = NULL, note = NULL WHERE driver_id = ?`).run(
+          userId,
+        );
+        db.prepare(`UPDATE requests SET pickup = '' WHERE passenger_id = ?`).run(userId);
+        db.prepare(
+          'UPDATE users SET line_user_id = ?, display_name = ?, picture_url = NULL, contact = NULL WHERE id = ?',
+        ).run(`${DELETED_PREFIX}${userId}`, DELETED_NAME, userId);
+        db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
+        db.exec('COMMIT');
+      } catch (error) {
+        db.exec('ROLLBACK');
+        throw error;
+      }
+      return plan;
     },
 
     // 成行：已過出發時間、未取消、至少一位已確認乘客。週一為一週起始（台灣時間）
