@@ -31,17 +31,18 @@ Success metric: **completed trips per week** (`npm run stats`), counting trips t
 | | |
 |---|---|
 | MVP | Built and merged ([#1](../../issues/1) spec → [#2](../../pull/2)). LINE login + LINE push verified end-to-end with real accounts locally |
-| Merged PRs | 7 ([#2](../../pull/2)–[#7](../../pull/7), [#9](../../pull/9)) |
-| Automated UAT | Headless browser, real clicks, 53 cases: **49 pass, 4 partial, 0 fail**. The 4 partials need a real phone to check the LINE push. [Report with screenshots](docs/uat/report-2026-11-19-run-A.md) |
-| Deployed | **Not yet.** No public HTTPS host yet |
+| Merged PRs | 11 ([#2](../../pull/2)–[#7](../../pull/7), [#9](../../pull/9), [#11](../../pull/11)–[#13](../../pull/13), [#19](../../pull/19)) |
+| Launch readiness | Privacy page, terms of use with consent at login, support email, add-friend reminder and admin account deletion are built ([#15](../../issues/15)–[#18](../../issues/18), merged in [#19](../../pull/19)) |
+| Automated UAT | Headless browser, real clicks, 58 cases: **54 pass, 4 partial, 0 fail**. The 4 partials need a real phone to check the LINE push. [Report with screenshots](docs/uat/report-2026-11-23-run-A.md) |
+| Deployed | **Yes.** Live at <https://surfpool-langcheng.fly.dev> (Fly.io, Tokyo, single machine + SQLite volume). See [`docs/deploy-fly.md`](docs/deploy-fly.md) |
 | Validated with users | **Not yet.** Whether people will leave the FB group, and the real match rate, still need launch data or interviews |
 
 ## What's next
 
-- [#10](../../issues/10) **Before opening to strangers:** privacy page, terms of use, support / delete-account contact, and a reminder to add the LINE official account (without it, push notifications silently fail).
+- [#10](../../issues/10) **Before opening to strangers:** privacy page, terms of use, support email, add-friend reminder and account deletion are built ([#15](../../issues/15)–[#18](../../issues/18)). Still open: checking them on a real phone with real LINE accounts.
 - [#8](../../issues/8) **Less friction for drivers:** pre-fill, precise meetup points and copy-to-FB post are built and merged. The LINE share flow still needs a run on a real phone before the issue closes.
 - Real-LINE test runs (B/C in [`docs/uat-cases.md`](docs/uat-cases.md)): push notifications, login, and sharing on an actual phone.
-- Deploy to HTTPS and get the first real trips running before the winter swell.
+- Get the first real trips running on the live site before the winter swell.
 
 Launch-readiness plan: [`docs/launch-readiness-plan.md`](docs/launch-readiness-plan.md) · Full UAT case list: [`docs/uat-cases.md`](docs/uat-cases.md)
 
